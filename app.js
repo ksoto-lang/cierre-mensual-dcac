@@ -310,7 +310,7 @@ function afterLabelValue(text, label) {
   const idx = text.indexOf(label);
   if (idx === -1) return null;
   const after = text.slice(idx + label.length);
-  const m = after.match(/^\s*(--|[\d.,]+)\s*%?\s*((?:[+-][\d.,]+\s*%?\s*(?:p\.p\.)?)|--)?\s*(?:↗|↘)?/);
+  const m = after.match(/^\s*(--|[\d.,]+)\s*%?\s*((?:[+-][\d.,]+\s*%?\s*(?:p\.p\.)?)|--)?\s*(?:↗|↘|→)?/);
   if (!m) return null;
   return { value: m[1].trim(), delta: (m[2] || "").trim() };
 }
@@ -336,7 +336,7 @@ function parseLabeledGroup(text, labels) {
   const valuesM = after.match(valuesRe);
   if (!valuesM) return hits ? inter : null;
   const afterValues = after.slice(valuesM.index + valuesM[0].length);
-  const deltaToken = "(--|[+-][\\d.,]+\\s*%?\\s*(?:p\\.p\\.)?)\\s*(?:↗|↘)?";
+  const deltaToken = "(--|[+-][\\d.,]+\\s*%?\\s*(?:p\\.p\\.)?)\\s*(?:↗|↘|→)?";
   const deltasRe = new RegExp("^\\s*" + labels.map(() => deltaToken).join("\\s+"));
   const deltasM = afterValues.match(deltasRe);
   const grouped = {};
@@ -352,7 +352,7 @@ function parseResultadoComercial(text) {
     /([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s?%\s+([\d.,]+)\s?%\s+([\d.,]+)\s*Cab\.\s*Operadas\s*Soc\.\s*Operando/
   );
   const deltasM = text.match(
-    /((?:[+-][\d.,]+%?\s*(?:p\.p\.)?\s*(?:↗|↘)\s*){8,10})/
+    /((?:[+-][\d.,]+%?\s*(?:p\.p\.)?\s*(?:↗|↘|→)\s*){8,10})/
   );
   if (!m) return null;
   const deltas = deltasM
@@ -367,7 +367,7 @@ function parseResultadoComercial(text) {
 
 // "{Nombre} - Cabezas Operadas" -> total + desglose Faena/Invernada (venta/compra/rendim/ccc)
 function parseCabezasOperadasPage(text) {
-  const out = { total: null, faena: {}, invernada: {} };
+  const out = { total: null, units: {}, faena: {}, invernada: {} }; // faena/invernada quedan por compat. hacia atrás
   const totalLabels = ["Cabezas Ofrecidas", "Cabezas Vendidas", "Cabezas Compradas", "Cabezas Operadas", "Rendimiento", "%CCC"];
   const bodyText = stripTitle(text, "Cabezas Operadas");
   const totalG = parseLabeledGroup(bodyText, totalLabels);
@@ -378,6 +378,19 @@ function parseCabezasOperadasPage(text) {
       rendim: totalG["Rendimiento"], ccc: totalG["%CCC"],
     };
   }
+
+  // Intento 1: formato con la etiqueta de la unidad AL FINAL del bloque de valores
+  // (ej: "73 +66% ↗ -- -- 5,6 % +0,7 p.p. ↗ 65 % +18 p.p. ↗ Cria")
+  const trailing = parseCabezasOperadasBreakdownTrailingLabel(text);
+  if (Object.keys(trailing).length) {
+    out.units = trailing;
+    out.faena = trailing.faena || {};
+    out.invernada = trailing.invernada || {};
+    return out;
+  }
+
+  // Intento 2 (fallback): formato "Faena Invernada" con la etiqueta en el medio
+  // (ej: "271 186 Cab. Venta +73% ↗ --")
   const breakdownIdx = text.indexOf("Faena Invernada");
   const breakdownText = breakdownIdx !== -1 ? text.slice(breakdownIdx) : text;
   ["Cab. Venta", "Cab. Compra", "Rendim", "%CCC"].forEach((label) => {
@@ -388,6 +401,37 @@ function parseCabezasOperadasPage(text) {
     out.faena[key] = { val: vals[0], delta: deltas ? deltas[0] : "" };
     out.invernada[key] = { val: vals[1], delta: deltas ? deltas[1] : "" };
   });
+  out.units = { faena: out.faena, invernada: out.invernada };
+  return out;
+}
+
+// Variante donde, por cada unidad, el nombre de la unidad aparece AL FINAL del
+// bloque de valores (venta/compra/rendim/ccc), en vez de en un header aparte.
+// Ej: "73 +66% ↗ -- -- 5,6 % +0,7 p.p. ↗ 65 % +18 p.p. ↗ Cria"
+function parseCabezasOperadasBreakdownTrailingLabel(text) {
+  const num = "(--|[\\d.,]+)";
+  const pct = "(--|[+-][\\d.,]+%?)\\s*(?:↗|↘|→)?";
+  const pp = "(--|[+-][\\d.,]+\\s*p\\.p\\.)\\s*(?:↗|↘|→)?";
+  const re = new RegExp(
+    num + "\\s*" + pct + "\\s*" +
+    num + "\\s*" + pct + "\\s*" +
+    num + "\\s*%\\s*" + pp + "\\s*" +
+    num + "\\s*%\\s*" + pp + "\\s*" +
+    "(Cria|Cría|Faena|Invernada|MAG)\\b",
+    "g"
+  );
+  const out = {};
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const label = m[9];
+    const key = label === "Cria" || label === "Cría" ? "cria" : label.toLowerCase();
+    out[key] = {
+      venta: { val: m[1], delta: m[2] },
+      compra: { val: m[3], delta: m[4] },
+      rendim: { val: m[5], delta: m[6] },
+      ccc: { val: m[7], delta: m[8] },
+    };
+  }
   return out;
 }
 
@@ -404,7 +448,7 @@ function pairAfter(text, label) {
   const idx = text.indexOf(label);
   if (idx === -1) return null;
   const after = text.slice(idx + label.length);
-  const m = after.match(/(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?\s*(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?/);
+  const m = after.match(/(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘|→)?\s*(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘|→)?/);
   return m ? [m[1].trim(), m[2].trim()] : null;
 }
 
@@ -441,16 +485,35 @@ function parseUnitOwnPage(text) {
   };
 }
 
+// "{Nombre} - Resumen del mes" -> solo se usa como respaldo de "vs Target" (que no
+// aparece en ninguna otra diapositiva parseable de forma confiable para oficinas).
+function parseResumenDelMesTarget(text) {
+  const m = text.match(/Vs Target\s+(--|[+-][\d.,]+%?)\s*(?:↗|↘|→)?/);
+  return m ? m[1] : null;
+}
+
 // "{Nombre} - Nuevas Sociedades Publicadoras" (sin sufijo Faena/Invernada)
 function parseNuevasSociedadesPage(text) {
   const body = stripTitle(text, "Nuevas Sociedades Publicadoras");
+  // patrón específico y más confiable: "Nuevas Sociedades 2 +0 → %CCC 17 % +9 p.p. ↗ Fae 1 Inv 1 Cria 1 MAG --"
+  // (evita confundirse con la leyenda del gráfico "Nuevas Sociedades 2025/2024")
+  const specific = body.match(
+    /Nuevas Sociedades\s+(--|[\d.,]+)\s*((?:--|[+-][\d.,]+))?\s*(?:↗|↘|→)?\s*%CCC\s+(--|[\d.,]+)\s?%\s*((?:--|[+-][\d.,]+\s*p\.p\.))?\s*(?:↗|↘|→)?\s*Fae\s+(--|[\d.,]+)\s*Inv\s+(--|[\d.,]+)\s*Cria\s+(--|[\d.,]+)\s*MAG\s+(--|[\d.,]+)/
+  );
+  if (specific) {
+    return {
+      cant: specific[1], cantDelta: specific[2] || "",
+      ccc: specific[3], cccDelta: specific[4] || "",
+      fae: specific[5], inv: specific[6], cria: specific[7], mag: specific[8],
+    };
+  }
   // formato agrupado clásico
-  const m = body.match(/Nuevas Sociedades %CCC\s+Fae Inv Cria MAG\s+([\d.,]+)\s+([\d.,]+)\s?%\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+((?:--|[+-][\d.,]+)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?))/);
+  const m = body.match(/Nuevas Sociedades %CCC\s+Fae Inv Cria MAG\s+([\d.,]+)\s+([\d.,]+)\s?%\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+((?:--|[+-][\d.,]+)\s*(?:↗|↘|→)?\s*(?:--|[+-][\d.,]+%?))/);
   if (m) {
     const deltas = (m[7].match(/--|[+-][\d.,]+%?/g) || []);
     return { cant: m[1], ccc: m[2], fae: m[3], inv: m[4], cria: m[5], mag: m[6], cantDelta: deltas[0] || "", cccDelta: deltas[1] || "" };
   }
-  // formato entrelazado: "Nuevas Sociedades 3 +2 ↗ %CCC 67 % -- Fae 3 Inv -- Cria -- MAG --"
+  // formato entrelazado genérico (último recurso)
   const g = parseLabeledGroup(body, ["Nuevas Sociedades", "%CCC", "Fae", "Inv", "Cria", "MAG"]);
   if (g && g["Nuevas Sociedades"]) {
     return {
@@ -472,20 +535,22 @@ function autofillFromPages(pages) {
   const missing = [];
   const setVal = (id, v) => { if (v !== undefined && v !== "" && v !== null) document.getElementById(id).value = v; };
 
-  // Portada: nombre / tipo / mes / año
+  // Portada: nombre / tipo / mes / año (el orden "Cierre Mensual {nombre}" o "{nombre} Cierre Mensual" varía)
   const portada = pages[0] ? pages[0].text : "";
-  const portadaM = portada.match(/Cierre Mensual\s+(.+?)\s+(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)\s+(\d{4})/);
-  if (portadaM) {
-    const nombre = portadaM[1].trim();
-    document.getElementById("nombre").value = nombre;
-    document.getElementById("tipo").value = /^Oficina\b/i.test(nombre) ? "oficina" : "asociado";
-    onTipoChange();
-    document.getElementById("mes").value = portadaM[2];
-    document.getElementById("anio").value = portadaM[3];
+  const monthYearM = portada.match(/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)\s+(\d{4})/);
+  if (monthYearM) {
+    const nombre = portada.replace("Cierre Mensual", "").replace(monthYearM[0], "").trim();
+    if (nombre) {
+      document.getElementById("nombre").value = nombre;
+      document.getElementById("tipo").value = /^Oficina\b/i.test(nombre) ? "oficina" : "asociado";
+      onTipoChange();
+    }
+    document.getElementById("mes").value = monthYearM[1];
+    document.getElementById("anio").value = monthYearM[2];
     filled.push("nombre/tipo/mes/año");
   }
 
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null;
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null;
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
@@ -494,9 +559,10 @@ function autofillFromPages(pages) {
     if (/[-–—]\s?Cabezas Operadas\b/.test(title) && !cabezasOp) cabezasOp = parseCabezasOperadasPage(p.text);
     if (/[-–—]\s?Sociedades Operando\b/.test(title) && !sociedadesOp) sociedadesOp = parseSociedadesOperandoPage(p.text);
     if (/[-–—]\s?Nuevas Sociedades Publicadoras\b(?!\s?(Faena|Invernada))/.test(title) && !nuevas) nuevas = parseNuevasSociedadesPage(p.text);
+    if (/[-–—]\s?Resumen del mes\b/.test(title) && resumenTarget === null) resumenTarget = parseResumenDelMesTarget(p.text);
 
     // páginas propias de unidad: "<algo> - Faena" / "– Invernada" / "- Cría" / "- MAG" (guion normal o largo)
-    const unitTitle = p.text.match(/[-–—]\s?(Faena|Invernada|Cría|MAG)\b/);
+    const unitTitle = p.text.match(/[-–—]\s?(Faena|Invernada|Cria|Cría|MAG)\b/);
     const looksLikeUnitPage = /Cabezas Ofrecidas/.test(p.text) && /Cabezas Operadas/.test(p.text) && /Soc\s*Vendedoras/.test(p.text);
     if (unitTitle && looksLikeUnitPage) {
       const label = unitTitle[1];
@@ -538,8 +604,14 @@ function autofillFromPages(pages) {
     if (t.operadas.delta) { setVal("h_varAnio", valOf(t.operadas.delta)); document.getElementById("h_varAnioSigno").value = signOf(t.operadas.delta); }
     if (t.rendim && t.rendim.delta) { setVal("h_rendimVar", valOf(t.rendim.delta)); document.getElementById("h_rendimSigno").value = signOf(t.rendim.delta); }
     if (t.ccc && t.ccc.delta) { setVal("h_cccVar", valOf(t.ccc.delta)); document.getElementById("h_cccSigno").value = signOf(t.ccc.delta); }
-    filled.push("hero (desde 'Cabezas Operadas' — revisá 'vs target', no lo encontré)");
-    missing.push("vs target (no encontré la página 'Resultado Comercial')");
+    if (resumenTarget && !isDash(resumenTarget)) {
+      setVal("h_varTarget", valOf(resumenTarget));
+      document.getElementById("h_varTargetSigno").value = signOf(resumenTarget);
+      filled.push("hero (desde 'Cabezas Operadas' + 'Resumen del mes' para vs target)");
+    } else {
+      filled.push("hero (desde 'Cabezas Operadas' — revisá 'vs target', no lo encontré)");
+      missing.push("vs target (no encontré la página 'Resultado Comercial' ni 'Resumen del mes')");
+    }
   } else {
     missing.push("hero (no encontré ni 'Resultado Comercial' ni 'Cabezas Operadas')");
   }
@@ -571,7 +643,7 @@ function autofillFromPages(pages) {
   // ---- unidades de negocio (Cría / Faena / Invernada / MAG) ----
   UNIDADES.forEach((u) => {
     const own = unitPages[u.key];
-    const fromTotal = cabezasOp ? (u.key === "faena" ? cabezasOp.faena : u.key === "invernada" ? cabezasOp.invernada : null) : null;
+    const fromTotal = cabezasOp && cabezasOp.units ? cabezasOp.units[u.key] : null;
 
     if (!own) {
       // no había diapositiva propia de esta unidad este mes -> sin actividad
