@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de Cierre Mensual — dCaC</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <img id="headerLogo" alt="dCaC">
+  <div>
+    <h1>Generador de Cierre Mensual</h1>
+    <p>Armá el HTML del mail de cierre a partir del PDF de la reunión</p>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ================= FORM PANEL ================= -->
+  <div class="panel form-panel">
+
+    <details class="step" open>
+      <summary>1. Datos generales</summary>
+      <div class="step-body">
+        <label>Tipo</label>
+        <select id="tipo">
+          <option value="asociado">Asociado comercial individual / Representante</option>
+          <option value="oficina">Oficina</option>
+        </select>
+        <div class="hint">Un asociado individual no muestra la tarjeta de SACs ni la tabla "Resultado comercial por asociado".</div>
+
+        <label>Nombre (oficina o asociado)</label>
+        <input type="text" id="nombre" placeholder="Ej: Jose Olmedo / Oficina Entre Ríos">
+
+        <div class="row">
+          <div>
+            <label>Mes</label>
+            <select id="mes">
+              <option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option>
+              <option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option>
+              <option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+            </select>
+          </div>
+          <div>
+            <label>Año</label>
+            <input type="text" id="anio" value="2026">
+          </div>
+        </div>
+
+        <label>Link de Drive — presentación (PDF)</label>
+        <input type="url" id="linkPdf" placeholder="https://drive.google.com/file/d/.../view">
+
+        <label>Link de Drive — listado de Socs con CI habilitadas</label>
+        <input type="url" id="linkCis" placeholder="https://drive.google.com/file/d/.../view">
+        <div class="hint">Se convierte automáticamente a link de descarga directa (.xlsx) para el botón del mail.</div>
+
+        <label>Link "Ver reporte completo" (botón final)</label>
+        <input type="url" id="linkReporte" placeholder="Por defecto usa el mismo link de la presentación">
+      </div>
+    </details>
+
+    <details class="step" open>
+      <summary>2. Leer el PDF</summary>
+      <div class="step-body">
+        <div class="hint">
+          Intento leer el PDF directo desde el link de Drive de arriba. Google Drive suele bloquear esa lectura desde el navegador (CORS),
+          así que si falla, descargá el PDF y subilo acá abajo — funciona siempre.
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" id="btnReadDrive">Intentar leer desde el link de Drive</button>
+        </div>
+        <label style="margin-top:14px;">O subí el PDF manualmente</label>
+        <input type="file" id="filePdf" accept="application/pdf">
+        <div id="pdfStatus"></div>
+        <div id="pdfPagesWrap" style="display:none;">
+          <label>Texto extraído (para copiar valores a mano si el autocompletado no llega)</label>
+          <div class="pdf-pages" id="pdfPagesText"></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary>3. Hero (cabezas / rendimiento / %CCC)</summary>
+      <div class="step-body">
+        <div class="row">
+          <div><label>Cabezas operadas</label><input type="text" id="h_operadas" placeholder="520"></div>
+          <div><label>Cabezas ofrecidas (total)</label><input type="text" id="h_ofrecidas" placeholder="617"></div>
+        </div>
+        <div class="row">
+          <div><label>Var. vs año ant. (%)</label><input type="text" id="h_varAnio" placeholder="14"></div>
+          <div><label>Signo</label><select id="h_varAnioSigno"><option value="pos">▲ positivo</option><option value="neg">▼ negativo</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Var. vs target (%)</label><input type="text" id="h_varTarget" placeholder="48"></div>
+          <div><label>Signo</label><select id="h_varTargetSigno"><option value="neg">▼ negativo</option><option value="pos">▲ positivo</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Rendimiento (%)</label><input type="text" id="h_rendim" placeholder="1,9"></div>
+          <div><label>Var. rendimiento (p.p.)</label><input type="text" id="h_rendimVar" placeholder="0,3"></div>
+          <div><label>Signo</label><select id="h_rendimSigno"><option value="neg">▼</option><option value="pos">▲</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>% CCC</label><input type="text" id="h_ccc" placeholder="49"></div>
+          <div><label>Var. %CCC (p.p.)</label><input type="text" id="h_cccVar" placeholder="27"></div>
+          <div><label>Signo</label><select id="h_cccSigno"><option value="pos">▲</option><option value="neg">▼</option></select></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary>4. Actividad por unidad de negocio</summary>
+      <div class="step-body">
+        <div class="hint">Tildá "Sin actividad" si esa unidad no tuvo diapositiva en el PDF este mes (queda en 0 / --, sin flechas).</div>
+        <div id="unidadesWrap"></div>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary>5. Sociedades y nuevas sociedades</summary>
+      <div class="step-body">
+        <h4 style="margin:0 0 6px 0;font-size:12px;color:var(--navy);">Sociedades operando</h4>
+        <div class="row">
+          <div><label>Mes</label><input type="text" id="s_mes" placeholder="10"></div>
+          <div><label>Var. mes</label><input type="text" id="s_mesVar" placeholder="+3"></div>
+        </div>
+        <div class="row">
+          <div><label>YTD</label><input type="text" id="s_ytd" placeholder="37"></div>
+          <div><label>Var. YTD</label><input type="text" id="s_ytdVar" placeholder="+30"></div>
+        </div>
+
+        <h4 style="margin:16px 0 6px 0;font-size:12px;color:var(--navy);">Nuevas sociedades</h4>
+        <div class="row">
+          <div><label>Cantidad</label><input type="text" id="n_cant" placeholder="3"></div>
+          <div><label>Var.</label><input type="text" id="n_var" placeholder="+2"></div>
+          <div><label>% CCC</label><input type="text" id="n_ccc" placeholder="67"></div>
+        </div>
+        <div class="row">
+          <div><label>INV</label><input type="text" id="n_inv" placeholder="0"></div>
+          <div><label>CRÍA</label><input type="text" id="n_cria" placeholder="0"></div>
+          <div><label>FAE</label><input type="text" id="n_fae" placeholder="3"></div>
+        </div>
+        <div class="hint">Dejá en 0 o vacío las unidades sin nuevas sociedades — no se muestran en la tarjeta.</div>
+
+        <div class="checkbox-row"><input type="checkbox" id="sacsEnabled"> <label style="margin:0;text-transform:none;font-weight:600;">Incluir tarjeta de SACs (había diapositiva de SACs en el PDF)</label></div>
+        <div id="sacsFields" style="display:none;">
+          <div class="row">
+            <div><label>SACs enviados</label><input type="text" id="sacs_env"></div>
+            <div><label>SACs aprobados</label><input type="text" id="sacs_apr"></div>
+          </div>
+          <div class="row">
+            <div><label>JD solicitadas</label><input type="text" id="jd_sol"></div>
+            <div><label>JD otorgadas</label><input type="text" id="jd_otor"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="step" id="asociadosStep" style="display:none;">
+      <summary>6. Resultado comercial por asociado</summary>
+      <div class="step-body">
+        <div class="hint">Solo aplica a oficinas. Se omite del todo para asociados individuales.</div>
+        <div class="assoc-header"><span>Asociado</span><span>Ofrec.</span><span>Operadas</span><span>% CCC</span><span>Soc.</span><span></span></div>
+        <div id="asociadosWrap"></div>
+        <div class="btn-row"><button class="btn-secondary" id="btnAddAsociado">+ Agregar asociado</button></div>
+      </div>
+    </details>
+
+    <details class="step" open>
+      <summary>7. Recuadros (Producción, CIs, Mermas, Resumen del mes, o lo que necesites)</summary>
+      <div class="step-body">
+        <div class="hint">
+          Cada recuadro es independiente: título propio, color, contenido, y un link/botón opcional (para el listado de CIs, por ejemplo).
+          Agregá los que necesites este mes, en el orden que quieras — no hay una cantidad fija ni títulos predefinidos.
+          <br><br>
+          En el contenido: una línea que termina en "<b>:</b>" se muestra en negrita como subtítulo. Una línea que arranca con "<b>- </b>" se muestra como viñeta. El resto, como texto corrido.
+        </div>
+        <div id="recuadrosWrap"></div>
+        <div class="btn-row"><button class="btn-secondary" id="btnAddRecuadro">+ Agregar recuadro</button></div>
+      </div>
+    </details>
+
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn-primary" id="btnGenerate">Generar HTML</button>
+      <button class="btn-secondary" id="btnCopy">Copiar HTML</button>
+      <button class="btn-secondary" id="btnDownload">Descargar .html</button>
+    </div>
+  </div>
+
+  <!-- ================= PREVIEW PANEL ================= -->
+  <div class="panel preview-panel" style="padding:0;">
+    <div class="preview-toolbar">
+      <h2>Vista previa</h2>
+      <span class="hint" id="genStatus"></span>
+    </div>
+    <div id="previewEmpty" class="empty-preview">Completá el formulario y tocá "Generar HTML" para ver el mail acá.</div>
+    <iframe id="previewFrame" style="display:none;"></iframe>
+  </div>
+
+</div>
+
+<script src="assets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
