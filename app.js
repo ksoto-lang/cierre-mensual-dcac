@@ -278,30 +278,24 @@ async function parsePdfBuffer(buf) {
 }
 
 // ---- parsers específicos por tipo de diapositiva ---------------------------
-// El PDF sale siempre del mismo dashboard (Metabase), así que cada tipo de
-// diapositiva tiene un orden de texto fijo. Estos parsers explotan ese orden.
+// El PDF sale siempre del mismo dashboard (Metabase), pero el orden del texto
+// puede venir en dos formatos según el reporte:
+//  (a) "agrupado":     Label1 Label2 Label3 ... valor1 valor2 valor3 ... delta1 delta2 delta3 ...
+//  (b) "entrelazado":  Label1 valor1 delta1 Label2 valor2 delta2 ...
+// Estos parsers prueban los dos formatos, en ese orden.
 
 function cleanNum(s) {
   if (s === undefined || s === null) return "";
   return s.replace(/\s+/g, "").replace("%", "").replace("p.p.", "");
 }
-function isDash(s) { return s.trim() === "--"; }
-
-// Busca "labelText" en el string y devuelve [tokenAntes1, tokenAntes2] inmediatamente anteriores.
-function pairBefore(text, label) {
-  const idx = text.indexOf(label);
-  if (idx === -1) return null;
-  const before = text.slice(0, idx);
-  const m = before.match(/(--|[\d.,]+\s?%?)\s+(--|[\d.,]+\s?%?)\s*$/);
-  return m ? [m[1].trim(), m[2].trim()] : null;
-}
-// Busca "labelText" y devuelve las 2 variaciones (con signo) inmediatamente posteriores.
-function pairAfter(text, label) {
-  const idx = text.indexOf(label);
-  if (idx === -1) return null;
-  const after = text.slice(idx + label.length);
-  const m = after.match(/(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?\s*(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?/);
-  return m ? [m[1].trim(), m[2].trim()] : null;
+function isDash(s) { return (s || "").trim() === "--"; }
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+// Corta el texto justo después del título de la diapositiva (para que la
+// etiqueta del título, ej. "- Cabezas Operadas", no se confunda con el
+// campo de datos del mismo nombre más adelante en la página).
+function stripTitle(text, titleLabel) {
+  const m = text.match(new RegExp("[-–—]\\s?" + escapeRegex(titleLabel) + "\\b"));
+  return m ? text.slice(m.index + m[0].length) : text;
 }
 function signOf(deltaStr) {
   return deltaStr && deltaStr.trim().startsWith("-") ? "neg" : "pos";
@@ -311,7 +305,48 @@ function valOf(deltaStr) {
   return cleanNum(deltaStr.replace(/^[+-]/, ""));
 }
 
-// "{Nombre} - Resultado Comercial" -> hero completo + sociedades operando totales
+// Valor (+delta si está pegado) inmediatamente después de un label, para formato "entrelazado".
+function afterLabelValue(text, label) {
+  const idx = text.indexOf(label);
+  if (idx === -1) return null;
+  const after = text.slice(idx + label.length);
+  const m = after.match(/^\s*(--|[\d.,]+)\s*%?\s*((?:[+-][\d.,]+\s*%?\s*(?:p\.p\.)?)|--)?\s*(?:↗|↘)?/);
+  if (!m) return null;
+  return { value: m[1].trim(), delta: (m[2] || "").trim() };
+}
+
+// Parser genérico de un grupo de métricas con etiquetas conocidas.
+// Devuelve { "Label": {value, delta}, ... } o null si no encontró nada usable.
+function parseLabeledGroup(text, labels) {
+  // 1) intento formato entrelazado
+  const inter = {};
+  let hits = 0;
+  labels.forEach((label) => {
+    const r = afterLabelValue(text, label);
+    if (r) { inter[label] = r; hits++; }
+  });
+  if (hits >= Math.max(1, labels.length - 1)) return inter;
+
+  // 2) intento formato agrupado
+  const headerRe = new RegExp(labels.map(escapeRegex).join("\\s+"));
+  const headerM = text.match(headerRe);
+  if (!headerM) return hits ? inter : null;
+  const after = text.slice(headerM.index + headerM[0].length);
+  const valuesRe = new RegExp("^\\s*" + labels.map(() => "(--|[\\d.,]+)\\s*%?").join("\\s+"));
+  const valuesM = after.match(valuesRe);
+  if (!valuesM) return hits ? inter : null;
+  const afterValues = after.slice(valuesM.index + valuesM[0].length);
+  const deltaToken = "(--|[+-][\\d.,]+\\s*%?\\s*(?:p\\.p\\.)?)\\s*(?:↗|↘)?";
+  const deltasRe = new RegExp("^\\s*" + labels.map(() => deltaToken).join("\\s+"));
+  const deltasM = afterValues.match(deltasRe);
+  const grouped = {};
+  labels.forEach((label, i) => {
+    grouped[label] = { value: (valuesM[i + 1] || "").trim(), delta: deltasM ? (deltasM[i + 1] || "").trim() : "" };
+  });
+  return grouped;
+}
+
+// "{Nombre} - Resultado Comercial" -> hero completo + sociedades operando totales (asociado individual)
 function parseResultadoComercial(text) {
   const m = text.match(
     /([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s?%\s+([\d.,]+)\s?%\s+([\d.,]+)\s*Cab\.\s*Operadas\s*Soc\.\s*Operando/
@@ -333,11 +368,15 @@ function parseResultadoComercial(text) {
 // "{Nombre} - Cabezas Operadas" -> total + desglose Faena/Invernada (venta/compra/rendim/ccc)
 function parseCabezasOperadasPage(text) {
   const out = { total: null, faena: {}, invernada: {} };
-  const totalM = text.match(
-    /Cabezas Ofrecidas Cabezas Vendidas Cabezas Compradas Cabezas Operadas Rendimiento %CCC\s+([\d.,]+)\s+([\d.,]+)\s+(--|[\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s?%\s+([\d.,]+)\s?%/
-  );
-  if (totalM) {
-    out.total = { ofrecidas: totalM[1], vendidas: totalM[2], compradas: totalM[3], operadas: totalM[4], rendim: totalM[5], ccc: totalM[6] };
+  const totalLabels = ["Cabezas Ofrecidas", "Cabezas Vendidas", "Cabezas Compradas", "Cabezas Operadas", "Rendimiento", "%CCC"];
+  const bodyText = stripTitle(text, "Cabezas Operadas");
+  const totalG = parseLabeledGroup(bodyText, totalLabels);
+  if (totalG) {
+    out.total = {
+      ofrecidas: totalG["Cabezas Ofrecidas"], vendidas: totalG["Cabezas Vendidas"],
+      compradas: totalG["Cabezas Compradas"], operadas: totalG["Cabezas Operadas"],
+      rendim: totalG["Rendimiento"], ccc: totalG["%CCC"],
+    };
   }
   const breakdownIdx = text.indexOf("Faena Invernada");
   const breakdownText = breakdownIdx !== -1 ? text.slice(breakdownIdx) : text;
@@ -352,40 +391,76 @@ function parseCabezasOperadasPage(text) {
   return out;
 }
 
-// "{Nombre} - Sociedades Operando" -> totales mes/YTD + desglose Faena/Invernada
+// Busca "labelText" en el string y devuelve [tokenAntes1, tokenAntes2] inmediatamente anteriores (formato agrupado).
+function pairBefore(text, label) {
+  const idx = text.indexOf(label);
+  if (idx === -1) return null;
+  const before = text.slice(0, idx);
+  const m = before.match(/(--|[\d.,]+\s?%?)\s+(--|[\d.,]+\s?%?)\s*$/);
+  return m ? [m[1].trim(), m[2].trim()] : null;
+}
+// Busca "labelText" y devuelve las 2 variaciones (con signo) inmediatamente posteriores (formato agrupado).
+function pairAfter(text, label) {
+  const idx = text.indexOf(label);
+  if (idx === -1) return null;
+  const after = text.slice(idx + label.length);
+  const m = after.match(/(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?\s*(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘)?/);
+  return m ? [m[1].trim(), m[2].trim()] : null;
+}
+
+// "{Nombre} - Sociedades Operando" -> totales mes/YTD
 function parseSociedadesOperandoPage(text) {
-  const totalM = text.match(
-    /Sociedades Operando Sociedades Vendedoras Sociedades Compradoras Sociedades Operando YTD\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)/
-  );
-  const deltasM = text.match(/((?:[+-][\d.,]+\s*(?:↗|↘)\s*){4})/);
-  let deltas = [];
-  if (deltasM) deltas = (deltasM[1].match(/[+-][\d.,]+/g) || []);
-  if (!totalM) return null;
+  const labels = ["Sociedades Operando", "Sociedades Vendedoras", "Sociedades Compradoras", "Sociedades Operando YTD"];
+  const bodyText = stripTitle(text, "Sociedades Operando");
+  const g = parseLabeledGroup(bodyText, labels);
+  if (!g || !g["Sociedades Operando"]) return null;
   return {
-    mes: totalM[1], vendedoras: totalM[2], compradoras: totalM[3], ytd: totalM[4],
-    mesDelta: deltas[0] || "", ytdDelta: deltas[3] || "",
+    mes: g["Sociedades Operando"].value,
+    vendedoras: g["Sociedades Vendedoras"] ? g["Sociedades Vendedoras"].value : "",
+    compradoras: g["Sociedades Compradoras"] ? g["Sociedades Compradoras"].value : "",
+    ytd: g["Sociedades Operando YTD"] ? g["Sociedades Operando YTD"].value : "",
+    mesDelta: g["Sociedades Operando"].delta,
+    ytdDelta: g["Sociedades Operando YTD"] ? g["Sociedades Operando YTD"].delta : "",
   };
 }
 
 // Diapositiva propia de una unidad de negocio: "{Nombre} - Faena" / "- Invernada" / "- Cría" / "- MAG"
 function parseUnitOwnPage(text) {
-  const m = text.match(
-    /Cabezas Ofrecidas Cabezas Vendidas Cabezas Compradas Cabezas Operadas Soc Vendedoras Soc Compradoras\s+([\d.,]+)\s+([\d.,]+)\s+(--|[\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+(--|[\d.,]+)\s+((?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?)\s*(?:↗|↘)?)/
-  );
-  if (!m) return null;
-  const deltas = (m[7].match(/--|[+-][\d.,]+%?/g) || []);
+  const labels = ["Cabezas Ofrecidas", "Cabezas Vendidas", "Cabezas Compradas", "Cabezas Operadas", "Soc Vendedoras", "Soc Compradoras"];
+  const g = parseLabeledGroup(text, labels);
+  if (!g || !g["Cabezas Ofrecidas"]) return null;
   return {
-    ofrecidas: m[1], vendidas: m[2], compradas: m[3], operadas: m[4], socVend: m[5], socCompr: m[6],
-    deltas, // [ofrecidas, vendidas, compradas, operadas, socVend, socCompr]
+    ofrecidas: g["Cabezas Ofrecidas"].value,
+    vendidas: g["Cabezas Vendidas"] ? g["Cabezas Vendidas"].value : "",
+    compradas: g["Cabezas Compradas"] ? g["Cabezas Compradas"].value : "",
+    operadas: g["Cabezas Operadas"] ? g["Cabezas Operadas"].value : "",
+    socVend: g["Soc Vendedoras"] ? g["Soc Vendedoras"].value : "",
+    socCompr: g["Soc Compradoras"] ? g["Soc Compradoras"].value : "",
+    deltaOfrecidas: g["Cabezas Ofrecidas"].delta,
+    deltaOperadas: g["Cabezas Operadas"] ? g["Cabezas Operadas"].delta : "",
   };
 }
 
 // "{Nombre} - Nuevas Sociedades Publicadoras" (sin sufijo Faena/Invernada)
 function parseNuevasSociedadesPage(text) {
-  const m = text.match(/Nuevas Sociedades %CCC\s+Fae Inv Cria MAG\s+([\d.,]+)\s+([\d.,]+)\s?%\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+((?:--|[+-][\d.,]+)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?))/);
-  if (!m) return null;
-  const deltas = (m[7].match(/--|[+-][\d.,]+%?/g) || []);
-  return { cant: m[1], ccc: m[2], fae: m[3], inv: m[4], cria: m[5], mag: m[6], cantDelta: deltas[0] || "", cccDelta: deltas[1] || "" };
+  const body = stripTitle(text, "Nuevas Sociedades Publicadoras");
+  // formato agrupado clásico
+  const m = body.match(/Nuevas Sociedades %CCC\s+Fae Inv Cria MAG\s+([\d.,]+)\s+([\d.,]+)\s?%\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+(--|[\d.,]+)\s+((?:--|[+-][\d.,]+)\s*(?:↗|↘)?\s*(?:--|[+-][\d.,]+%?))/);
+  if (m) {
+    const deltas = (m[7].match(/--|[+-][\d.,]+%?/g) || []);
+    return { cant: m[1], ccc: m[2], fae: m[3], inv: m[4], cria: m[5], mag: m[6], cantDelta: deltas[0] || "", cccDelta: deltas[1] || "" };
+  }
+  // formato entrelazado: "Nuevas Sociedades 3 +2 ↗ %CCC 67 % -- Fae 3 Inv -- Cria -- MAG --"
+  const g = parseLabeledGroup(body, ["Nuevas Sociedades", "%CCC", "Fae", "Inv", "Cria", "MAG"]);
+  if (g && g["Nuevas Sociedades"]) {
+    return {
+      cant: g["Nuevas Sociedades"].value, ccc: g["%CCC"] ? g["%CCC"].value : "",
+      fae: g["Fae"] ? g["Fae"].value : "--", inv: g["Inv"] ? g["Inv"].value : "--",
+      cria: g["Cria"] ? g["Cria"].value : "--", mag: g["MAG"] ? g["MAG"].value : "--",
+      cantDelta: g["Nuevas Sociedades"].delta, cccDelta: g["%CCC"] ? g["%CCC"].delta : "",
+    };
+  }
+  return null;
 }
 
 function firstLine(text) {
@@ -414,14 +489,16 @@ function autofillFromPages(pages) {
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
-    if (/Resultado Comercial/.test(p.text) && !resultado) resultado = parseResultadoComercial(p.text);
-    if (/Cabezas Ofrecidas Cabezas Vendidas Cabezas Compradas Cabezas Operadas Rendimiento %CCC/.test(p.text) && !cabezasOp) cabezasOp = parseCabezasOperadasPage(p.text);
-    if (/Sociedades Operando Sociedades Vendedoras/.test(p.text) && !sociedadesOp) sociedadesOp = parseSociedadesOperandoPage(p.text);
-    if (/Nuevas Sociedades %CCC\s+Fae Inv Cria MAG/.test(p.text) && !nuevas) nuevas = parseNuevasSociedadesPage(p.text);
+    const title = p.text.slice(0, 120);
+    if (/[-–—]\s?Resultado Comercial\b/.test(title) && !resultado) resultado = parseResultadoComercial(p.text);
+    if (/[-–—]\s?Cabezas Operadas\b/.test(title) && !cabezasOp) cabezasOp = parseCabezasOperadasPage(p.text);
+    if (/[-–—]\s?Sociedades Operando\b/.test(title) && !sociedadesOp) sociedadesOp = parseSociedadesOperandoPage(p.text);
+    if (/[-–—]\s?Nuevas Sociedades Publicadoras\b(?!\s?(Faena|Invernada))/.test(title) && !nuevas) nuevas = parseNuevasSociedadesPage(p.text);
 
-    // páginas propias de unidad: "<algo> - Faena" / "- Invernada" / "- Cría" / "- MAG" (y no es la de "Vendedores ..." ni "Nuevas Sociedades ...")
-    const unitTitle = p.text.match(/-\s(Faena|Invernada|Cría|MAG)\b/);
-    if (unitTitle && /Cabezas Ofrecidas Cabezas Vendidas Cabezas Compradas Cabezas Operadas Soc Vendedoras Soc Compradoras/.test(p.text)) {
+    // páginas propias de unidad: "<algo> - Faena" / "– Invernada" / "- Cría" / "- MAG" (guion normal o largo)
+    const unitTitle = p.text.match(/[-–—]\s?(Faena|Invernada|Cría|MAG)\b/);
+    const looksLikeUnitPage = /Cabezas Ofrecidas/.test(p.text) && /Cabezas Operadas/.test(p.text) && /Soc\s*Vendedoras/.test(p.text);
+    if (unitTitle && looksLikeUnitPage) {
       const label = unitTitle[1];
       const key = label === "Cría" ? "cria" : label.toLowerCase();
       if (!unitPages[key]) unitPages[key] = parseUnitOwnPage(p.text);
@@ -436,7 +513,7 @@ function autofillFromPages(pages) {
     }
   });
 
-  // ---- hero + sociedades desde Resultado Comercial ----
+  // ---- hero + sociedades desde Resultado Comercial (o, si no está, desde Cabezas Operadas) ----
   if (resultado) {
     setVal("h_ofrecidas", resultado.ofrecidas);
     setVal("h_operadas", resultado.operadas);
@@ -452,8 +529,19 @@ function autofillFromPages(pages) {
       setVal("s_mesVar", (signOf(d[7]) === "neg" ? "-" : "+") + valOf(d[7]));
     }
     filled.push("hero (cabezas/rendimiento/%CCC)");
+  } else if (cabezasOp && cabezasOp.total && cabezasOp.total.ofrecidas && cabezasOp.total.operadas) {
+    const t = cabezasOp.total;
+    setVal("h_ofrecidas", cleanNum(t.ofrecidas.value));
+    setVal("h_operadas", cleanNum(t.operadas.value));
+    if (t.ccc) setVal("h_ccc", cleanNum(t.ccc.value));
+    if (t.rendim) setVal("h_rendim", cleanNum(t.rendim.value));
+    if (t.operadas.delta) { setVal("h_varAnio", valOf(t.operadas.delta)); document.getElementById("h_varAnioSigno").value = signOf(t.operadas.delta); }
+    if (t.rendim && t.rendim.delta) { setVal("h_rendimVar", valOf(t.rendim.delta)); document.getElementById("h_rendimSigno").value = signOf(t.rendim.delta); }
+    if (t.ccc && t.ccc.delta) { setVal("h_cccVar", valOf(t.ccc.delta)); document.getElementById("h_cccSigno").value = signOf(t.ccc.delta); }
+    filled.push("hero (desde 'Cabezas Operadas' — revisá 'vs target', no lo encontré)");
+    missing.push("vs target (no encontré la página 'Resultado Comercial')");
   } else {
-    missing.push("hero (no encontré la página 'Resultado Comercial')");
+    missing.push("hero (no encontré ni 'Resultado Comercial' ni 'Cabezas Operadas')");
   }
 
   // ---- sociedades operando (preferimos esta página dedicada sobre Resultado Comercial) ----
@@ -494,14 +582,12 @@ function autofillFromPages(pages) {
     document.getElementById(`${u.key}_sin`).checked = false;
     document.getElementById(`${u.key}_sin`).dispatchEvent(new Event("change"));
 
-    setVal(`${u.key}_operadas`, own.operadas);
-    setVal(`${u.key}_ofrecidas`, own.ofrecidas);
-    setVal(`${u.key}_vendidas`, own.vendidas);
-    setVal(`${u.key}_compradas`, isDash(own.compradas) ? "--" : own.compradas);
-    if (own.deltas && own.deltas.length >= 4) {
-      setVal(`${u.key}_opVar`, valOf(own.deltas[3]));
-      setVal(`${u.key}_ofVar`, valOf(own.deltas[0]));
-    }
+    setVal(`${u.key}_operadas`, cleanNum(own.operadas));
+    setVal(`${u.key}_ofrecidas`, cleanNum(own.ofrecidas));
+    setVal(`${u.key}_vendidas`, cleanNum(own.vendidas));
+    setVal(`${u.key}_compradas`, isDash(own.compradas) ? "--" : cleanNum(own.compradas));
+    if (own.deltaOperadas) setVal(`${u.key}_opVar`, valOf(own.deltaOperadas));
+    if (own.deltaOfrecidas) setVal(`${u.key}_ofVar`, valOf(own.deltaOfrecidas));
     if (fromTotal && fromTotal.ccc) {
       setVal(`${u.key}_ccc`, cleanNum(fromTotal.ccc.val));
     }
