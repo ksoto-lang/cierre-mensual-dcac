@@ -1,24 +1,3 @@
-
-/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -29,7 +8,7 @@ Index · HTML
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
- 
+
 <header class="app-header">
   <img id="headerLogo" alt="dCaC">
   <div>
@@ -37,12 +16,12 @@ Index · HTML
     <p>Armá el HTML del mail de cierre a partir del PDF de la reunión</p>
   </div>
 </header>
- 
+
 <div class="layout">
- 
+
   <!-- ================= FORM PANEL ================= -->
   <div class="panel form-panel">
- 
+
     <div class="step" id="draftsPanel" style="border-color:#D7E3F0;">
       <div class="step-body" style="padding:14px 16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -53,7 +32,7 @@ Index · HTML
         <div id="draftsList" style="margin-top:10px;"></div>
       </div>
     </div>
- 
+
     <details class="step" open>
       <summary id="sumDatos">1. Datos generales</summary>
       <div class="step-body">
@@ -63,10 +42,10 @@ Index · HTML
           <option value="oficina">Oficina</option>
         </select>
         <div class="hint">Un asociado individual no muestra la tarjeta de SACs ni la tabla "Resultado comercial por asociado".</div>
- 
+
         <label>Nombre (oficina o asociado)</label>
         <input type="text" id="nombre" placeholder="Ej: Jose Olmedo / Oficina Entre Ríos">
- 
+
         <div class="row">
           <div>
             <label>Mes</label>
@@ -81,17 +60,17 @@ Index · HTML
             <input type="text" id="anio" value="2026">
           </div>
         </div>
- 
+
         <label>Link de Drive — presentación (PDF)</label>
         <input type="url" id="linkPdf" placeholder="https://drive.google.com/file/d/.../view">
         <div class="hint">Se usa tanto para leer el PDF como para el botón final "Ver reporte completo" del mail.</div>
- 
+
         <label>Link de Drive — listado de Socs con CI habilitadas</label>
         <input type="url" id="linkCis" placeholder="https://drive.google.com/file/d/.../view">
         <div class="hint">Se convierte automáticamente a link de descarga directa (.xlsx) para el botón del mail.</div>
       </div>
     </details>
- 
+
     <details class="step" open>
       <summary>2. Leer el PDF</summary>
       <div class="step-body">
@@ -111,7 +90,7 @@ Index · HTML
         </div>
       </div>
     </details>
- 
+
     <details class="step">
       <summary id="sumHero">3. Hero (cabezas / rendimiento / %CCC)</summary>
       <div class="step-body">
@@ -139,7 +118,7 @@ Index · HTML
         </div>
       </div>
     </details>
- 
+
     <details class="step">
       <summary id="sumUnidades">4. Actividad por unidad de negocio</summary>
       <div class="step-body">
@@ -147,7 +126,7 @@ Index · HTML
         <div id="unidadesWrap"></div>
       </div>
     </details>
- 
+
     <details class="step">
       <summary id="sumSociedades">5. Sociedades y nuevas sociedades</summary>
       <div class="step-body">
@@ -160,7 +139,7 @@ Index · HTML
           <div><label>YTD</label><input type="text" id="s_ytd" placeholder="37"></div>
           <div><label>Var. YTD</label><input type="text" id="s_ytdVar" placeholder="+30"></div>
         </div>
- 
+
         <h4 style="margin:16px 0 6px 0;font-size:12px;color:var(--navy);">Nuevas sociedades</h4>
         <div class="row">
           <div><label>Cantidad</label><input type="text" id="n_cant" placeholder="3"></div>
@@ -173,7 +152,7 @@ Index · HTML
           <div><label>FAE</label><input type="text" id="n_fae" placeholder="3"></div>
         </div>
         <div class="hint">Dejá en 0 o vacío las unidades sin nuevas sociedades — no se muestran en la tarjeta.</div>
- 
+
         <div class="checkbox-row"><input type="checkbox" id="sacsEnabled"> <label style="margin:0;text-transform:none;font-weight:600;">Incluir tarjeta de SACs (había diapositiva de SACs en el PDF)</label></div>
         <div id="sacsFields" style="display:none;">
           <div class="row">
@@ -187,7 +166,7 @@ Index · HTML
         </div>
       </div>
     </details>
- 
+
     <details class="step" id="asociadosStep" style="display:none;">
       <summary>6. Resultado comercial por asociado</summary>
       <div class="step-body">
@@ -197,7 +176,7 @@ Index · HTML
         <div class="btn-row"><button class="btn-secondary" id="btnAddAsociado">+ Agregar asociado</button></div>
       </div>
     </details>
- 
+
     <details class="step" open>
       <summary id="sumRecuadros">7. Recuadros (Producción, CIs, Mermas, Resumen del mes, o lo que necesites)</summary>
       <div class="step-body">
@@ -211,7 +190,7 @@ Index · HTML
         <div class="btn-row"><button class="btn-secondary" id="btnAddRecuadro">+ Agregar recuadro</button></div>
       </div>
     </details>
- 
+
     <div class="sticky-actions">
     <div class="btn-row" style="margin-top:6px;">
       <button class="btn-primary" id="btnGenerate">Generar HTML</button>
@@ -220,7 +199,7 @@ Index · HTML
     </div>
     </div>
   </div>
- 
+
   <!-- ================= PREVIEW PANEL ================= -->
   <div class="panel preview-panel" style="padding:0;">
     <div class="preview-toolbar">
@@ -230,20 +209,10 @@ Index · HTML
     <div id="previewEmpty" class="empty-preview">Completá el formulario y tocá "Generar HTML" para ver el mail acá.</div>
     <iframe id="previewFrame" style="display:none;"></iframe>
   </div>
- 
+
 </div>
- 
+
 <script src="assets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
- 
-
-
-
-
-
-
-
-
-
