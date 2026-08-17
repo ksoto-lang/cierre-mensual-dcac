@@ -28,6 +28,28 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btnGenerate").addEventListener("click", onGenerate);
   document.getElementById("btnCopy").addEventListener("click", onCopy);
   document.getElementById("btnDownload").addEventListener("click", onDownload);
+  document.getElementById("btnSaveDraft").addEventListener("click", () => {
+    saveDraft();
+    const btn = document.getElementById("btnSaveDraft");
+    const orig = btn.textContent;
+    btn.textContent = "Guardado ✓";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+
+  renderDraftsList();
+  checkAutosaveBanner();
+  updateStepIndicators();
+
+  // autoguardado con debounce ante cualquier cambio en el formulario
+  let autosaveTimer = null;
+  document.querySelector(".form-panel").addEventListener("input", () => {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(autosave, 1200);
+  });
+  document.querySelector(".form-panel").addEventListener("change", () => {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(autosave, 400);
+  });
 
   onTipoChange();
 
@@ -77,16 +99,17 @@ function renderUnidades() {
 }
 
 // ---- fila de asociado (solo oficinas) --------------------------------------
-function renderAsociadoRow() {
+function renderAsociadoRow(data) {
+  data = data || {};
   const wrap = document.getElementById("asociadosWrap");
   const row = document.createElement("div");
   row.className = "assoc-row";
   row.innerHTML = `
-    <input type="text" placeholder="Nombre" class="a_nombre">
-    <input type="text" placeholder="Ofrecidas" class="a_ofrecidas">
-    <input type="text" placeholder="Operadas" class="a_operadas">
-    <input type="text" placeholder="% CCC" class="a_ccc">
-    <input type="text" placeholder="Soc." class="a_soc">
+    <input type="text" placeholder="Nombre" class="a_nombre" value="${escapeAttr(data.nombre || "")}">
+    <input type="text" placeholder="Ofrecidas" class="a_ofrecidas" value="${escapeAttr(data.ofrecidas || "")}">
+    <input type="text" placeholder="Operadas" class="a_operadas" value="${escapeAttr(data.operadas || "")}">
+    <input type="text" placeholder="% CCC" class="a_ccc" value="${escapeAttr(data.ccc || "")}">
+    <input type="text" placeholder="Soc." class="a_soc" value="${escapeAttr(data.soc || "")}">
     <button class="btn-danger" type="button" title="Quitar">✕</button>
   `;
   row.querySelector("button").addEventListener("click", () => row.remove());
@@ -303,6 +326,11 @@ function signOf(deltaStr) {
 function valOf(deltaStr) {
   if (!deltaStr || isDash(deltaStr)) return "";
   return cleanNum(deltaStr.replace(/^[+-]/, ""));
+}
+// Arma "+3" / "-3", o "" si no hay dato real (evita el bug de dejar un "-" suelto).
+function signedVal(deltaStr) {
+  const v = valOf(deltaStr);
+  return v ? (signOf(deltaStr) === "neg" ? "-" : "+") + v : "";
 }
 
 // Valor (+delta si está pegado) inmediatamente después de un label, para formato "entrelazado".
@@ -526,6 +554,20 @@ function parseNuevasSociedadesPage(text) {
   return null;
 }
 
+// "{Nombre} - SACs Enviados" -> tarjetas SACs Enviados / SACs Aprobados / JD Otorgadas (/ JD Pedidas si existe)
+function parseSacsPage(text) {
+  const enviados = text.match(/SACs?\s*Enviados\s+(--|[\d.,]+)/i);
+  const aprobados = text.match(/SACs?\s*Aprobados\s+(--|[\d.,]+)/i);
+  const jdOtor = text.match(/JD\s*Otorgadas\s+(--|[\d.,]+)/i);
+  const jdSol = text.match(/JD\s*(?:Pedidas|Solicitadas)\s+(--|[\d.,]+)/i);
+  return {
+    enviados: enviados && !isDash(enviados[1]) ? enviados[1] : "",
+    aprobados: aprobados && !isDash(aprobados[1]) ? aprobados[1] : "",
+    jdOtor: jdOtor && !isDash(jdOtor[1]) ? jdOtor[1] : "",
+    jdSol: jdSol && !isDash(jdSol[1]) ? jdSol[1] : "",
+  };
+}
+
 function firstLine(text) {
   return text.trim().split(/\s{2,}|(?<=\n)/)[0] || text.slice(0, 60);
 }
@@ -570,12 +612,16 @@ function autofillFromPages(pages) {
       if (!unitPages[key]) unitPages[key] = parseUnitOwnPage(p.text);
     }
 
-    // detectar tarjeta de SACs (si en algún momento aparece esa diapositiva)
-    if (/SACS?\s*aprob|JD\s*[Ss]olicitadas|JD\s*[Oo]torgadas/.test(p.text)) {
-      const envM = p.text.match(/(\d+)\s*\/\s*(\d+)\s*enviados/i) || p.text.match(/SACS?\s*[Aa]prob\.?\s*(\d+)\s*\/\s*(\d+)/);
+    // diapositiva de SACs (tarjetas "SACs Enviados/Aprobados/JD Otorgadas")
+    if (/SACs?\s*Enviados\s+(?:--|[\d.,]+)/.test(p.text) || /SACS?\s*aprob|JD\s*[Oo]torgadas/.test(p.text)) {
+      const sacs = parseSacsPage(p.text);
+      if (sacs.enviados) setVal("sacs_env", sacs.enviados);
+      if (sacs.aprobados) setVal("sacs_apr", sacs.aprobados);
+      if (sacs.jdSol) setVal("jd_sol", sacs.jdSol);
+      if (sacs.jdOtor) setVal("jd_otor", sacs.jdOtor);
       document.getElementById("sacsEnabled").checked = true;
       document.getElementById("sacsFields").style.display = "block";
-      filled.push("SACs");
+      if (!filled.includes("SACs")) filled.push("SACs");
     }
   });
 
@@ -592,7 +638,7 @@ function autofillFromPages(pages) {
       setVal("h_cccVar", valOf(d[5])); document.getElementById("h_cccSigno").value = signOf(d[5]);
       setVal("h_rendimVar", valOf(d[6])); document.getElementById("h_rendimSigno").value = signOf(d[6]);
       setVal("s_mes", resultado.socOperando);
-      setVal("s_mesVar", (signOf(d[7]) === "neg" ? "-" : "+") + valOf(d[7]));
+      setVal("s_mesVar", signedVal(d[7]));
     }
     filled.push("hero (cabezas/rendimiento/%CCC)");
   } else if (cabezasOp && cabezasOp.total && cabezasOp.total.ofrecidas && cabezasOp.total.operadas) {
@@ -610,7 +656,11 @@ function autofillFromPages(pages) {
       filled.push("hero (desde 'Cabezas Operadas' + 'Resumen del mes' para vs target)");
     } else {
       filled.push("hero (desde 'Cabezas Operadas' — revisá 'vs target', no lo encontré)");
-      missing.push("vs target (no encontré la página 'Resultado Comercial' ni 'Resumen del mes')");
+      missing.push(
+        resumenTarget === "--"
+          ? "vs target (el PDF no trae ese dato este mes — no es un error del lector)"
+          : "vs target (no encontré la página 'Resultado Comercial' ni 'Resumen del mes')"
+      );
     }
   } else {
     missing.push("hero (no encontré ni 'Resultado Comercial' ni 'Cabezas Operadas')");
@@ -619,9 +669,9 @@ function autofillFromPages(pages) {
   // ---- sociedades operando (preferimos esta página dedicada sobre Resultado Comercial) ----
   if (sociedadesOp) {
     setVal("s_mes", sociedadesOp.mes);
-    setVal("s_mesVar", (signOf(sociedadesOp.mesDelta) === "neg" ? "-" : "+") + valOf(sociedadesOp.mesDelta));
+    setVal("s_mesVar", signedVal(sociedadesOp.mesDelta));
     setVal("s_ytd", sociedadesOp.ytd);
-    setVal("s_ytdVar", (signOf(sociedadesOp.ytdDelta) === "neg" ? "-" : "+") + valOf(sociedadesOp.ytdDelta));
+    setVal("s_ytdVar", signedVal(sociedadesOp.ytdDelta));
     filled.push("sociedades operando");
   } else {
     missing.push("sociedades operando");
@@ -634,7 +684,7 @@ function autofillFromPages(pages) {
     setVal("n_inv", isDash(nuevas.inv) ? "0" : nuevas.inv);
     setVal("n_cria", isDash(nuevas.cria) ? "0" : nuevas.cria);
     setVal("n_fae", isDash(nuevas.fae) ? "0" : nuevas.fae);
-    setVal("n_var", (signOf(nuevas.cantDelta) === "neg" ? "-" : "+") + valOf(nuevas.cantDelta));
+    setVal("n_var", signedVal(nuevas.cantDelta));
     filled.push("nuevas sociedades");
   } else {
     missing.push("nuevas sociedades");
@@ -666,6 +716,7 @@ function autofillFromPages(pages) {
     filled.push(u.label);
   });
 
+  updateStepIndicators();
   return { filled, missing };
 }
 
@@ -759,7 +810,6 @@ function readState() {
     anio: g("anio"),
     linkPdf: g("linkPdf"),
     linkCis: g("linkCis"),
-    linkReporte: g("linkReporte") || g("linkPdf"),
     hero: {
       operadas: g("h_operadas"),
       ofrecidas: g("h_ofrecidas"),
@@ -988,7 +1038,7 @@ ${asociadosBlock}
 ${recuadrosBlock}
 
 <tr><td style="padding:24px 28px 30px 28px;">
-<a href="${s.linkReporte || "#"}" target="_blank" style="display:block;text-align:center;background-color:#2E6DA4;background-image:linear-gradient(135deg,#3E82C4,#1B4F8C);color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:16px 0;border-radius:14px;letter-spacing:.01em;box-shadow:0 6px 16px rgba(27,79,140,0.32);">📄&nbsp;&nbsp;Ver reporte completo&nbsp;&nbsp;→</a>
+<a href="${s.linkPdf || "#"}" target="_blank" style="display:block;text-align:center;background-color:#2E6DA4;background-image:linear-gradient(135deg,#3E82C4,#1B4F8C);color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:16px 0;border-radius:14px;letter-spacing:.01em;box-shadow:0 6px 16px rgba(27,79,140,0.32);">📄&nbsp;&nbsp;Ver reporte completo&nbsp;&nbsp;→</a>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;"><tr>
 <td style="width:48.5%;vertical-align:top;">
@@ -1033,7 +1083,211 @@ ${recuadrosBlock}
 </table></td></tr></table></body></html>`;
 }
 
-// ---- acciones de UI ---------------------------------------------------------
+// ---- borradores / historial (localStorage, todo queda en este navegador) ---
+const DRAFTS_KEY = "dcac_cierre_drafts_v1";
+const AUTOSAVE_KEY = "dcac_cierre_autosave_v1";
+let suppressAutosave = false; // evita autoguardar mientras estamos restaurando un borrador
+
+function loadDrafts() {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+function saveDrafts(list) {
+  try {
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(list));
+  } catch (e) {
+    alert("No pude guardar el borrador (¿el navegador tiene el almacenamiento lleno o bloqueado?).");
+  }
+}
+
+function saveDraft() {
+  const state = readState();
+  const label = state.nombre
+    ? `${state.nombre} — ${state.mes} ${state.anio}`
+    : `Borrador sin nombre — ${new Date().toLocaleString()}`;
+  const drafts = loadDrafts();
+  const draft = { id: "d" + Date.now(), label, savedAt: new Date().toISOString(), state };
+  drafts.unshift(draft);
+  // límite razonable para no llenar el localStorage
+  while (drafts.length > 30) drafts.pop();
+  saveDrafts(drafts);
+  renderDraftsList();
+}
+
+function deleteDraft(id) {
+  const drafts = loadDrafts().filter((d) => d.id !== id);
+  saveDrafts(drafts);
+  renderDraftsList();
+}
+
+function loadDraft(id) {
+  const draft = loadDrafts().find((d) => d.id === id);
+  if (!draft) return;
+  suppressAutosave = true;
+  restoreState(draft.state);
+  suppressAutosave = false;
+  const panel = document.getElementById("draftsPanel");
+  if (panel && typeof panel.scrollIntoView === "function") {
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function renderDraftsList() {
+  const wrap = document.getElementById("draftsList");
+  const drafts = loadDrafts();
+  if (!drafts.length) {
+    wrap.innerHTML = `<div class="draft-empty">Todavía no guardaste ningún borrador en este navegador.</div>`;
+    return;
+  }
+  wrap.innerHTML = drafts.map((d) => {
+    const date = new Date(d.savedAt);
+    const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString().slice(0, 5);
+    return `<div class="draft-item">
+      <div class="draft-info">
+        <div class="draft-name">${escapeHtml(d.label)}</div>
+        <div class="draft-meta">Guardado ${dateStr}</div>
+      </div>
+      <div class="draft-actions">
+        <button class="btn-secondary" data-load="${d.id}">Cargar</button>
+        <button class="btn-danger" data-del="${d.id}">✕</button>
+      </div>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-load]").forEach((btn) => {
+    btn.addEventListener("click", () => loadDraft(btn.getAttribute("data-load")));
+  });
+  wrap.querySelectorAll("[data-del]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (confirm("¿Eliminar este borrador? No se puede deshacer.")) deleteDraft(btn.getAttribute("data-del"));
+    });
+  });
+}
+
+// Chip "✓ completo" en el título de cada paso, para saber de un vistazo qué falta.
+function updateStepIndicators() {
+  const setBadge = (summaryId, isDone) => {
+    const el = document.getElementById(summaryId);
+    if (!el) return;
+    let badge = el.querySelector(".step-status");
+    if (isDone) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "step-status filled";
+        badge.textContent = "✓ completo";
+        el.appendChild(badge);
+      }
+    } else if (badge) {
+      badge.remove();
+    }
+  };
+  const v = (id) => (document.getElementById(id).value || "").trim();
+
+  setBadge("sumDatos", !!v("nombre") && !!v("linkPdf"));
+  setBadge("sumHero", !!v("h_operadas"));
+  const anyUnidad = UNIDADES.some((u) => !document.getElementById(`${u.key}_sin`).checked && v(`${u.key}_operadas`));
+  setBadge("sumUnidades", anyUnidad);
+  setBadge("sumSociedades", !!v("s_mes"));
+  const contenidos = Array.from(document.querySelectorAll("#recuadrosWrap .recuadro-card .r_contenido"));
+  setBadge("sumRecuadros", contenidos.some((t) => t.value.trim()));
+}
+
+function autosave() {
+  if (suppressAutosave) return;
+  updateStepIndicators();
+  try {
+    const state = readState();
+    // no autoguardar un formulario totalmente vacío
+    if (!state.nombre && !state.hero.operadas) return;
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), state }));
+  } catch (e) { /* silencioso: el autoguardado nunca debe interrumpir al usuario */ }
+}
+
+function checkAutosaveBanner() {
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || "null");
+  } catch (e) { saved = null; }
+  if (!saved) return;
+  const banner = document.getElementById("autosaveBanner");
+  const date = new Date(saved.savedAt);
+  const label = saved.state.nombre ? `${saved.state.nombre} — ${saved.state.mes} ${saved.state.anio}` : "un cierre sin nombre";
+  banner.style.display = "block";
+  banner.innerHTML = `<div class="banner-restore">
+    <span>Hay cambios sin guardar de tu última sesión (${escapeHtml(label)}, ${date.toLocaleString()}).</span>
+    <div class="btn-row">
+      <button class="btn-secondary" id="btnRestoreAutosave">Restaurar</button>
+      <button class="btn-secondary" id="btnDismissAutosave">Descartar</button>
+    </div>
+  </div>`;
+  document.getElementById("btnRestoreAutosave").addEventListener("click", () => {
+    suppressAutosave = true;
+    restoreState(saved.state);
+    suppressAutosave = false;
+    banner.style.display = "none";
+  });
+  document.getElementById("btnDismissAutosave").addEventListener("click", () => {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    banner.style.display = "none";
+  });
+}
+
+// Reconstruye todo el formulario a partir de un objeto como el que devuelve readState().
+function restoreState(state) {
+  const setv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ""; };
+
+  document.getElementById("tipo").value = state.tipo || "asociado";
+  onTipoChange();
+  setv("nombre", state.nombre);
+  setv("mes", state.mes);
+  setv("anio", state.anio);
+  setv("linkPdf", state.linkPdf);
+  setv("linkCis", state.linkCis);
+
+  const h = state.hero || {};
+  setv("h_operadas", h.operadas); setv("h_ofrecidas", h.ofrecidas);
+  setv("h_varAnio", h.varAnio); setv("h_varAnioSigno", h.varAnioSigno || "pos");
+  setv("h_varTarget", h.varTarget); setv("h_varTargetSigno", h.varTargetSigno || "neg");
+  setv("h_rendim", h.rendim); setv("h_rendimVar", h.rendimVar); setv("h_rendimSigno", h.rendimSigno || "neg");
+  setv("h_ccc", h.ccc); setv("h_cccVar", h.cccVar); setv("h_cccSigno", h.cccSigno || "pos");
+
+  UNIDADES.forEach((u) => {
+    const un = (state.unidades && state.unidades[u.key]) || {};
+    const chk = document.getElementById(`${u.key}_sin`);
+    chk.checked = !!un.sinActividad;
+    chk.dispatchEvent(new Event("change"));
+    setv(`${u.key}_operadas`, un.sinActividad ? "" : un.operadas);
+    setv(`${u.key}_opVar`, un.opVar);
+    setv(`${u.key}_ofrecidas`, un.sinActividad ? "" : (un.ofrecidas === "--" ? "" : un.ofrecidas));
+    setv(`${u.key}_ofVar`, un.ofVar);
+    setv(`${u.key}_ccc`, un.sinActividad ? "" : (un.ccc === "--" ? "" : un.ccc));
+    setv(`${u.key}_vendidas`, un.sinActividad ? "" : un.vendidas);
+    setv(`${u.key}_compradas`, un.sinActividad ? "" : (un.compradas === "--" ? "" : un.compradas));
+  });
+
+  const s = state.sociedades || {};
+  setv("s_mes", s.mes); setv("s_mesVar", s.mesVar); setv("s_ytd", s.ytd); setv("s_ytdVar", s.ytdVar);
+
+  const n = state.nuevas || {};
+  setv("n_cant", n.cant); setv("n_var", n.varr); setv("n_ccc", n.ccc);
+  setv("n_inv", n.inv); setv("n_cria", n.cria); setv("n_fae", n.fae);
+
+  const sacsChk = document.getElementById("sacsEnabled");
+  sacsChk.checked = !!state.sacsEnabled;
+  document.getElementById("sacsFields").style.display = sacsChk.checked ? "block" : "none";
+  const sacs = state.sacs || {};
+  setv("sacs_env", sacs.env); setv("sacs_apr", sacs.apr); setv("jd_sol", sacs.jdSol); setv("jd_otor", sacs.jdOtor);
+
+  document.getElementById("asociadosWrap").innerHTML = "";
+  (state.asociados || []).forEach((a) => renderAsociadoRow(a));
+
+  renderRecuadros(state.recuadros && state.recuadros.length ? state.recuadros : DEFAULT_RECUADROS);
+  updateStepIndicators();
+}
+
+
 function onGenerate() {
   const state = readState();
   if (!state.nombre) {
