@@ -38,10 +38,11 @@
       <div class="step-body">
         <label>Tipo</label>
         <select id="tipo">
-          <option value="asociado">Asociado comercial individual / Representante</option>
+          <option value="asociado">Asociado comercial individual</option>
+          <option value="representante">Representante</option>
           <option value="oficina">Oficina</option>
         </select>
-        <div class="hint">Un asociado individual no muestra la tarjeta de SACs ni la tabla "Resultado comercial por asociado".</div>
+        <div class="hint">Asociados y representantes no muestran la tarjeta de SACs ni la tabla "Resultado comercial por asociado". Además, a los representantes no se les muestra el % de Rendimiento en el hero.</div>
 
         <label>Nombre (oficina o asociado)</label>
         <input type="text" id="nombre" placeholder="Ej: Jose Olmedo / Oficina Entre Ríos">
@@ -60,6 +61,14 @@
             <input type="text" id="anio" value="2026">
           </div>
         </div>
+
+        <label>Periodicidad de este cierre</label>
+        <select id="periodicidad">
+          <option value="mensual">Mensual</option>
+          <option value="trimestral">Trimestral</option>
+          <option value="cuatrimestral">Cuatrimestral</option>
+        </select>
+        <div class="hint">Si es trimestral o cuatrimestral, las comparaciones del mail dicen "vs mismo período" en vez de "vs {mes} año anterior".</div>
 
         <label>Link de Drive — presentación (PDF)</label>
         <input type="url" id="linkPdf" placeholder="https://drive.google.com/file/d/.../view">
