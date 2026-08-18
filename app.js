@@ -807,6 +807,7 @@ function readState() {
     tipo: g("tipo") || document.getElementById("tipo").value,
     nombre: g("nombre"),
     mes: document.getElementById("mes").value,
+    periodicidad: document.getElementById("periodicidad").value,
     anio: g("anio"),
     linkPdf: g("linkPdf"),
     linkCis: g("linkCis"),
@@ -851,8 +852,16 @@ function readState() {
 function buildEmailHtml(s) {
   const A = window.DCAC_ASSETS;
   const isOficina = s.tipo === "oficina";
+  const isRepresentante = s.tipo === "representante";
   const tituloHeader = s.nombre || (isOficina ? "Oficina" : "Asociado");
   const badge = `${s.mes.toUpperCase()} ${s.anio}`;
+
+  // Etiqueta de comparación: "vs Jul 25" para cierres mensuales,
+  // "vs mismo período 25'" para trimestrales/cuatrimestrales.
+  const anioAnt2 = String(parseInt(s.anio, 10) - 1).slice(-2);
+  const vsLabel = (s.periodicidad && s.periodicidad !== "mensual")
+    ? `vs mismo período ${anioAnt2}'`
+    : `vs ${s.mes.slice(0, 3)} ${anioAnt2}`;
 
   // ---- unidades ----
   const maxOperadas = Math.max(
@@ -876,12 +885,12 @@ function buildEmailHtml(s) {
     return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
       `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
-      `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)} <span style="color:#9AA7B2;">vs ${s.mes.slice(0,3)} ${String(s.anio).slice(-2)-1}</span></div>` +
+      `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` +
       `<table cellpadding="0" cellspacing="0" style="margin:5px 0 0 0;"><tr><td style="width:60px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
       `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}">` +
       `<div style="font-size:14px;color:#33424F;">${u.ofrecidas}</div>` +
-      (u.ofrecidas !== "--" ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)} <span style="color:#9AA7B2;">vs ${s.mes.slice(0,3)} ${String(s.anio).slice(-2)-1}</span></div>` : "") +
+      (u.ofrecidas !== "--" ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "") +
       `</td>` +
       `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
@@ -910,12 +919,12 @@ function buildEmailHtml(s) {
 <td style="width:50%;vertical-align:top;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Mes</div>
 <div style="color:#152C42;font-size:18px;font-weight:800;margin-top:2px;">${s.sociedades.mes || "--"}</div>
-<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.mesVar || "—"} vs ${s.mes.slice(0,3)} ${String(s.anio).slice(-2)-1})</div>
+<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.mesVar || "—"} ${vsLabel})</div>
 </td>
 <td style="width:50%;vertical-align:top;border-left:1px solid #D7E3F0;padding-left:10px;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">YTD</div>
 <div style="color:#152C42;font-size:18px;font-weight:800;margin-top:2px;">${s.sociedades.ytd || "--"}</div>
-<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.ytdVar || "—"} vs ${s.mes.slice(0,3)} ${String(s.anio).slice(-2)-1})</div>
+<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.ytdVar || "—"} ${vsLabel})</div>
 </td>
 </tr></table>
 </td><td style="width:3%;"></td>
@@ -1001,7 +1010,11 @@ ${varTagInline(s.hero.varTarget, s.hero.varTargetSigno)}
 <td style="width:2%;"></td>
 <td style="width:44%;vertical-align:top;">
 <table role="presentation" width="100%" style="background-color:#F5F9FD;border:1px solid #DCE8F5;border-radius:10px;"><tr>
-<td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
+${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;padding:12px 8px;">
+<div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
+<div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
+<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
+</td>` : `<td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
 <div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Rendimiento</div>
 <div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.rendim || "--"}%</div>
 <div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.rendimVar, s.hero.rendimSigno, " p.p.")}</div>
@@ -1011,7 +1024,7 @@ ${varTagInline(s.hero.varTarget, s.hero.varTargetSigno)}
 <div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
 <div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
 <div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
-</td>
+</td>`}
 </tr></table>
 </td>
 </tr></table>
@@ -1242,6 +1255,7 @@ function restoreState(state) {
   onTipoChange();
   setv("nombre", state.nombre);
   setv("mes", state.mes);
+  setv("periodicidad", state.periodicidad || "mensual");
   setv("anio", state.anio);
   setv("linkPdf", state.linkPdf);
   setv("linkCis", state.linkCis);
