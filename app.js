@@ -1211,7 +1211,7 @@ ${rows}
 <img src="data:${headerImgMime};base64,${headerImgData}" width="640" style="display:block;width:100%;height:auto;max-height:180px;">
 </td></tr>
 <tr><td style="background-color:#ffffff;padding:20px 28px 4px 28px;text-align:center;">
-<img src="data:image/png;base64,${A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
+<img src="data:image/png;base64,${A.logoNavy || A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
 <div style="color:#8A97A3;font-size:11px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;">Cierre Mensual</div>
 <div style="color:#152C42;font-size:22px;font-weight:800;margin-top:8px;">${escapeHtml(tituloHeader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px auto 0 auto;"><tr>
