@@ -33,6 +33,25 @@
       </div>
     </div>
 
+    <details class="step">
+      <summary>🔗 Directorio de sociedades (<span id="cuitDirCount">0</span>) — links al vademécum</summary>
+      <div class="step-body">
+        <div class="hint">
+          Se arma solo cuando leés un PDF que tenga la diapositiva "Comportamiento CIs". Cualquier sociedad que esté acá
+          y menciones en un recuadro (Paso 7) se convierte sola en link al vademécum, tal cual la escribas.
+          Para las que no aparezcan solas, agregalas a mano una vez y quedan guardadas.
+        </div>
+        <input type="text" id="cuitDirSearch" placeholder="Buscar sociedad...">
+        <div id="cuitDirList" style="margin-top:10px;"></div>
+        <label style="margin-top:14px;">Agregar sociedad a mano</label>
+        <div class="row">
+          <input type="text" id="cuitDirNewName" placeholder="Razón social">
+          <input type="text" id="cuitDirNewCuit" placeholder="CUIT (11 dígitos)">
+        </div>
+        <div class="btn-row"><button class="btn-secondary" id="btnAddCuit">+ Agregar</button></div>
+      </div>
+    </details>
+
     <details class="step" open>
       <summary id="sumDatos">1. Datos generales</summary>
       <div class="step-body">
@@ -77,6 +96,18 @@
         <label>Link de Drive — listado de Socs con CI habilitadas</label>
         <input type="url" id="linkCis" placeholder="https://drive.google.com/file/d/.../view">
         <div class="hint">Se convierte automáticamente a link de descarga directa (.xlsx) para el botón del mail.</div>
+
+        <label>Imagen de fondo del header (opcional)</label>
+        <input type="file" id="headerImageFile" accept="image/*">
+        <div class="hint">Si no subís nada, se usa la foto de vacas de siempre — o la que hayas guardado como "de siempre" (ver abajo). Recomendado: menos de 500 KB, horizontal (ideal ~1280×460px) — una imagen muy pesada hace lento el mail y algunos clientes de correo la bloquean.</div>
+        <div id="headerImagePreviewWrap" style="display:none;margin-top:8px;">
+          <img id="headerImagePreview" style="max-width:100%;max-height:120px;border-radius:8px;border:1px solid var(--border);display:block;">
+          <div id="headerImageStatus" style="font-size:11px;color:var(--green);margin-top:6px;"></div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btnSaveHeaderImageDefault" type="button">💾 Usar siempre esta imagen</button>
+            <button class="btn-secondary" id="btnRemoveHeaderImage" type="button">Quitar y volver a la de fábrica</button>
+          </div>
+        </div>
       </div>
     </details>
 
@@ -187,7 +218,7 @@
     </details>
 
     <details class="step" open>
-      <summary id="sumRecuadros">7. Recuadros (Producción, CIs, Mermas, Resumen del mes, o lo que necesites)</summary>
+      <summary id="sumRecuadros">7. Recuadros (Producción, Mermas, Resumen del mes, o lo que necesites)</summary>
       <div class="step-body">
         <div class="hint">
           Cada recuadro es independiente: título propio, color, contenido, y un link/botón opcional (para el listado de CIs, por ejemplo).
