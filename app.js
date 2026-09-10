@@ -1,20 +1,43 @@
+
+/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+App · JS
 // ============================================================================
 // Generador de Cierre Mensual — dCaC
 // Todo corre en el navegador. No hay backend: los links de Drive y el PDF
 // se procesan localmente (o se descargan directo desde Drive si el CORS lo
 // permite; si no, hay que subir el PDF a mano — ver panel "2. Leer el PDF").
 // ============================================================================
-
+ 
 let lastGeneratedHtml = "";
-
+let customHeaderImage = null; // {data, mime} en base64, o null = usar la de fábrica
+ 
 // ---- arranque -------------------------------------------------------------
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("headerLogo").src = "data:image/png;base64," + window.DCAC_ASSETS.logo;
-
+  customHeaderImage = loadSavedDefaultHeaderImage(); // si guardaste una imagen "de siempre", arranca ya cargada
+ 
   renderUnidades();
   renderAsociadoRow(); // arranca con una fila vacía
   renderRecuadros(DEFAULT_RECUADROS); // arranca con 4 recuadros de ejemplo, editables/borrables
-
+ 
   document.getElementById("tipo").addEventListener("change", onTipoChange);
   document.getElementById("sacsEnabled").addEventListener("change", (e) => {
     document.getElementById("sacsFields").style.display = e.target.checked ? "block" : "none";
@@ -35,11 +58,39 @@ window.addEventListener("DOMContentLoaded", () => {
     btn.textContent = "Guardado ✓";
     setTimeout(() => { btn.textContent = orig; }, 1500);
   });
-
+  document.getElementById("btnAddCuit").addEventListener("click", () => {
+    const name = document.getElementById("cuitDirNewName").value.trim();
+    const cuit = document.getElementById("cuitDirNewCuit").value.trim().replace(/[^\d]/g, "");
+    if (!name) { alert("Falta el nombre de la sociedad."); return; }
+    if (!/^\d{11}$/.test(cuit)) { alert("El CUIT tiene que tener 11 dígitos (sin guiones)."); return; }
+    addCuitManual(name, cuit);
+    document.getElementById("cuitDirNewName").value = "";
+    document.getElementById("cuitDirNewCuit").value = "";
+    renderCuitDirectoryPanel();
+  });
+  document.getElementById("cuitDirSearch").addEventListener("input", renderCuitDirectoryPanel);
+  document.getElementById("headerImageFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) loadCustomHeaderImage(file);
+  });
+  document.getElementById("btnRemoveHeaderImage").addEventListener("click", () => {
+    if (loadSavedDefaultHeaderImage() && !confirm("Esto también borra tu imagen 'de siempre' guardada. ¿Seguro?")) return;
+    clearSavedDefaultHeaderImage();
+  });
+  document.getElementById("btnSaveHeaderImageDefault").addEventListener("click", () => {
+    saveCurrentAsDefaultHeaderImage();
+    const btn = document.getElementById("btnSaveHeaderImageDefault");
+    const orig = btn.textContent;
+    btn.textContent = "Guardada ✓";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+ 
   renderDraftsList();
+  renderCuitDirectoryPanel();
+  updateHeaderImagePreview();
   checkAutosaveBanner();
   updateStepIndicators();
-
+ 
   // autoguardado con debounce ante cualquier cambio en el formulario
   let autosaveTimer = null;
   document.querySelector(".form-panel").addEventListener("input", () => {
@@ -50,18 +101,18 @@ window.addEventListener("DOMContentLoaded", () => {
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(autosave, 400);
   });
-
+ 
   onTipoChange();
-
+ 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 });
-
+ 
 function onTipoChange() {
   const tipo = document.getElementById("tipo").value;
   document.getElementById("asociadosStep").style.display = tipo === "oficina" ? "block" : "none";
 }
-
+ 
 // ---- unidades de negocio ----------------------------------------------------
 const UNIDADES = [
   { key: "cria", label: "Cría", color: "#E8B93E" },
@@ -69,7 +120,7 @@ const UNIDADES = [
   { key: "invernada", label: "Invernada", color: "#8B1E1E" },
   { key: "mag", label: "MAG", color: "#2E7D32" },
 ];
-
+ 
 function renderUnidades() {
   const wrap = document.getElementById("unidadesWrap");
   wrap.innerHTML = UNIDADES.map((u) => `
@@ -87,7 +138,7 @@ function renderUnidades() {
       <div><label>Compradas</label><input type="text" id="${u.key}_compradas" placeholder="-- si no compra"></div>
     </div>
   `).join("");
-
+ 
   UNIDADES.forEach((u) => {
     document.getElementById(`${u.key}_sin`).addEventListener("change", (e) => {
       const disabled = e.target.checked;
@@ -97,8 +148,80 @@ function renderUnidades() {
     });
   });
 }
-
+ 
 // ---- fila de asociado (solo oficinas) --------------------------------------
+// ---- imagen de fondo del header (opcional, reemplaza la foto de vacas por defecto) ---
+function loadCustomHeaderImage(file) {
+  if (file.size > 1.5 * 1024 * 1024) {
+    if (!confirm(`Esa imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB — es bastante para un mail, puede llegar lento o bloqueada. ¿Usarla igual?`)) {
+      document.getElementById("headerImageFile").value = "";
+      return;
+    }
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result; // "data:image/png;base64,AAAA..."
+    const m = result.match(/^data:([^;]+);base64,(.*)$/);
+    if (!m) return;
+    customHeaderImage = { mime: m[1], data: m[2] };
+    updateHeaderImagePreview();
+  };
+  reader.readAsDataURL(file);
+}
+function updateHeaderImagePreview() {
+  const wrap = document.getElementById("headerImagePreviewWrap");
+  const img = document.getElementById("headerImagePreview");
+  if (customHeaderImage) {
+    img.src = `data:${customHeaderImage.mime};base64,${customHeaderImage.data}`;
+    wrap.style.display = "block";
+  } else {
+    img.src = "";
+    wrap.style.display = "none";
+  }
+  updateHeaderImageStatus();
+}
+ 
+// La imagen "de siempre": se guarda en localStorage y se precarga sola en cada
+// cierre nuevo, sin tener que volver a subirla cada vez.
+const DEFAULT_HEADER_IMG_KEY = "dcac_default_header_image_v1";
+function loadSavedDefaultHeaderImage() {
+  try {
+    return JSON.parse(localStorage.getItem(DEFAULT_HEADER_IMG_KEY) || "null");
+  } catch (e) {
+    return null;
+  }
+}
+function saveCurrentAsDefaultHeaderImage() {
+  if (!customHeaderImage) {
+    alert("Primero subí una imagen para poder guardarla como la de siempre.");
+    return;
+  }
+  try {
+    localStorage.setItem(DEFAULT_HEADER_IMG_KEY, JSON.stringify(customHeaderImage));
+    updateHeaderImageStatus();
+  } catch (e) {
+    alert("No pude guardarla (¿el navegador tiene el almacenamiento lleno o bloqueado?).");
+  }
+}
+function clearSavedDefaultHeaderImage() {
+  localStorage.removeItem(DEFAULT_HEADER_IMG_KEY);
+  customHeaderImage = null;
+  document.getElementById("headerImageFile").value = "";
+  updateHeaderImagePreview();
+}
+function updateHeaderImageStatus() {
+  const saved = loadSavedDefaultHeaderImage();
+  const el = document.getElementById("headerImageStatus");
+  if (!el) return;
+  if (saved && customHeaderImage && saved.data === customHeaderImage.data) {
+    el.textContent = "✓ Esta es tu imagen de siempre — se va a usar sola en cada cierre nuevo.";
+  } else if (saved) {
+    el.textContent = "Tenés una imagen de siempre guardada, distinta a la que estás viendo ahora.";
+  } else {
+    el.textContent = "";
+  }
+}
+ 
 function renderAsociadoRow(data) {
   data = data || {};
   const wrap = document.getElementById("asociadosWrap");
@@ -112,10 +235,19 @@ function renderAsociadoRow(data) {
     <input type="text" placeholder="Soc." class="a_soc" value="${escapeAttr(data.soc || "")}">
     <button class="btn-danger" type="button" title="Quitar">✕</button>
   `;
+  // variaciones (las trae el auto-completado desde el PDF; en carga manual quedan vacías)
+  row.dataset.ofrecidasVar = data.ofrecidasVar || "";
+  row.dataset.ofrecidasSign = data.ofrecidasSign || "pos";
+  row.dataset.operadasVar = data.operadasVar || "";
+  row.dataset.operadasSign = data.operadasSign || "pos";
+  row.dataset.targetVar = data.targetVar || "";
+  row.dataset.targetSign = data.targetSign || "neg";
+  row.dataset.socVar = data.socVar || "";
+  row.dataset.socSign = data.socSign || "pos";
   row.querySelector("button").addEventListener("click", () => row.remove());
   wrap.appendChild(row);
 }
-
+ 
 // ---- recuadros dinámicos (Producción, CIs, Mermas, Resumen del mes, etc.) --
 const RECUADRO_COLORS = {
   teal: { label: "Verde azulado", bg: "#EAF6F4", border: "#1F8A7A", title: "#136B5E", text: "#2C3E50", btnBg: "#1F8A7A" },
@@ -124,24 +256,22 @@ const RECUADRO_COLORS = {
   green: { label: "Verde", bg: "#EAF7EE", border: "#1E8449", title: "#145C33", text: "#2C3E50", btnBg: "#1E8449" },
   dark: { label: "Oscuro (navy)", bg: "#152C42", border: null, title: "#8FB8DD", text: "#ffffff", btnBg: "#2E6DA4" },
 };
-
+ 
 const DEFAULT_RECUADROS = [
   { titulo: "Producción", icono: "📋", color: "teal", link: "", linkTexto: "",
     contenido: "SACs pendientes:\n- Agro Mauro SRL" },
-  { titulo: "CIs habilitadas", icono: "✅", color: "blue", link: "", linkTexto: "⬇️  Listado de Socs con CI habilitadas",
-    contenido: "Corroborar que las sociedades con CIs habilitadas tengan una buena interacción con las mismas. Y además, revisar aquellas que habría que desactivar del listado de abajo." },
   { titulo: "Novedades del mes", icono: "📊", color: "amber", link: "", linkTexto: "",
     contenido: "Mermas:\n- \nVariación de ofrecimientos:\n- \nNo concretadas de faena:\n- \nNo concretadas de invernada:\n- " },
   { titulo: "Resumen del mes", icono: "★", color: "dark", link: "", linkTexto: "",
     contenido: "" },
 ];
-
+ 
 function renderRecuadros(list) {
   const wrap = document.getElementById("recuadrosWrap");
   wrap.innerHTML = "";
   list.forEach((r) => addRecuadroCard(r));
 }
-
+ 
 function addRecuadroCard(data) {
   data = data || { titulo: "", icono: "", color: "teal", contenido: "", link: "", linkTexto: "" };
   const wrap = document.getElementById("recuadrosWrap");
@@ -166,7 +296,7 @@ function addRecuadroCard(data) {
   card.querySelector(".btn-remove-recuadro").addEventListener("click", () => card.remove());
   const handle = card.querySelector(".recuadro-handle");
   wrap.appendChild(card);
-
+ 
   // reordenar: click en el handle sube una posición, shift+click baja una posición
   handle.addEventListener("click", (e) => {
     if (e.shiftKey) {
@@ -178,11 +308,11 @@ function addRecuadroCard(data) {
     }
   });
 }
-
+ 
 function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
-
+ 
 function readRecuadros() {
   return Array.from(document.querySelectorAll("#recuadrosWrap .recuadro-card")).map((card) => ({
     titulo: card.querySelector(".r_titulo").value.trim(),
@@ -193,7 +323,7 @@ function readRecuadros() {
     linkTexto: card.querySelector(".r_linkTexto").value.trim(),
   })).filter((r) => r.titulo || r.contenido.trim());
 }
-
+ 
 // Convierte texto libre a HTML: "Algo:" -> subtítulo en negrita; "- item" -> viñeta; resto -> texto corrido.
 function contentToHtml(text) {
   const lines = String(text || "").split("\n");
@@ -217,34 +347,36 @@ function contentToHtml(text) {
   closeList();
   return html;
 }
-
+ 
 function buildRecuadroBlock(r) {
   const c = RECUADRO_COLORS[r.color] || RECUADRO_COLORS.teal;
   const borderStyle = c.border ? `border-left:4px solid ${c.border};` : "";
   const link = r.link ? (driveIdFromLink(r.link) ? driveExportXlsx(r.link) : r.link) : "";
+  const { text: marked, tokens } = linkifySocieties(r.contenido || "");
+  const bodyHtml = applyLinkTokens(contentToHtml(marked), tokens);
   return `<tr><td style="padding:16px 28px 4px 28px;">
 <table role="presentation" width="100%"><tr><td style="background-color:${c.bg};${borderStyle}border-radius:10px;padding:16px 18px;">
 ${r.titulo ? `<div style="color:${c.title};font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">${r.icono ? escapeHtml(r.icono) + " " : ""}${escapeHtml(r.titulo)}</div>` : ""}
 <div style="font-size:${r.color === "dark" ? "14" : "13"}px;color:${c.text};margin-top:9px;line-height:${r.color === "dark" ? "1.65" : "1.6"};">
-${contentToHtml(r.contenido)}
+${bodyHtml}
 </div>
 ${link ? `<a href="${link}" target="_blank" style="display:block;text-align:center;background-color:${c.btnBg};color:#ffffff;text-decoration:none;font-size:12px;font-weight:bold;padding:10px 0;border-radius:9px;margin-top:12px;">${escapeHtml(r.linkTexto || "Ver más")}</a>` : ""}
 </td></tr></table>
 </td></tr>`;
 }
-
+ 
 // ---- lectura de PDF ---------------------------------------------------------
 function driveIdFromLink(link) {
   if (!link) return null;
   const m = link.match(/\/d\/([a-zA-Z0-9_-]+)/) || link.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
 }
-
+ 
 function setPdfStatus(msg, type) {
   const el = document.getElementById("pdfStatus");
   el.innerHTML = `<div class="status-box status-${type}">${msg}</div>`;
 }
-
+ 
 async function readFromDriveLink() {
   const link = document.getElementById("linkPdf").value.trim();
   const id = driveIdFromLink(link);
@@ -267,13 +399,13 @@ async function readFromDriveLink() {
     );
   }
 }
-
+ 
 async function readPdfFile(file) {
   setPdfStatus("Leyendo " + file.name + "...", "warn");
   const buf = await file.arrayBuffer();
   await parsePdfBuffer(buf);
 }
-
+ 
 async function parsePdfBuffer(buf) {
   try {
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -287,7 +419,7 @@ async function parsePdfBuffer(buf) {
     document.getElementById("pdfPagesWrap").style.display = "block";
     document.getElementById("pdfPagesText").textContent =
       pages.map((p) => `--- Página ${p.num} ---\n${p.text}`).join("\n\n");
-
+ 
     const report = autofillFromPages(pages);
     setPdfStatus(
       `Leídas ${pdf.numPages} páginas. Completé automáticamente: ${report.filled.join(", ") || "nada reconocible"}.` +
@@ -299,14 +431,14 @@ async function parsePdfBuffer(buf) {
     setPdfStatus("No pude procesar ese PDF: " + err.message, "err");
   }
 }
-
+ 
 // ---- parsers específicos por tipo de diapositiva ---------------------------
 // El PDF sale siempre del mismo dashboard (Metabase), pero el orden del texto
 // puede venir en dos formatos según el reporte:
 //  (a) "agrupado":     Label1 Label2 Label3 ... valor1 valor2 valor3 ... delta1 delta2 delta3 ...
 //  (b) "entrelazado":  Label1 valor1 delta1 Label2 valor2 delta2 ...
 // Estos parsers prueban los dos formatos, en ese orden.
-
+ 
 function cleanNum(s) {
   if (s === undefined || s === null) return "";
   return s.replace(/\s+/g, "").replace("%", "").replace("p.p.", "");
@@ -332,7 +464,7 @@ function signedVal(deltaStr) {
   const v = valOf(deltaStr);
   return v ? (signOf(deltaStr) === "neg" ? "-" : "+") + v : "";
 }
-
+ 
 // Valor (+delta si está pegado) inmediatamente después de un label, para formato "entrelazado".
 function afterLabelValue(text, label) {
   const idx = text.indexOf(label);
@@ -342,7 +474,7 @@ function afterLabelValue(text, label) {
   if (!m) return null;
   return { value: m[1].trim(), delta: (m[2] || "").trim() };
 }
-
+ 
 // Parser genérico de un grupo de métricas con etiquetas conocidas.
 // Devuelve { "Label": {value, delta}, ... } o null si no encontró nada usable.
 function parseLabeledGroup(text, labels) {
@@ -354,7 +486,7 @@ function parseLabeledGroup(text, labels) {
     if (r) { inter[label] = r; hits++; }
   });
   if (hits >= Math.max(1, labels.length - 1)) return inter;
-
+ 
   // 2) intento formato agrupado
   const headerRe = new RegExp(labels.map(escapeRegex).join("\\s+"));
   const headerM = text.match(headerRe);
@@ -373,7 +505,7 @@ function parseLabeledGroup(text, labels) {
   });
   return grouped;
 }
-
+ 
 // "{Nombre} - Resultado Comercial" -> hero completo + sociedades operando totales (asociado individual)
 function parseResultadoComercial(text) {
   const m = text.match(
@@ -392,7 +524,50 @@ function parseResultadoComercial(text) {
     deltas, // [ofrecidas,operadas,target,vendidas,compradas,ccc,rendim,socOperando,operadasYTD,socOperandoYTD]
   };
 }
-
+ 
+// Reconstruye un nombre que salió rotado/letra-por-letra en el PDF
+// (ej: "F a c u n d o S a n s o t" -> "Facundo Sansot").
+function reconstructRotatedName(chunk) {
+  const collapsed = chunk.replace(/\s+/g, "");
+  if (!collapsed) return "";
+  return collapsed.replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, "$1 $2").trim();
+}
+ 
+// "{Nombre} - Resultado Comercial" de OFICINA: una tarjeta por asociado, con las
+// etiquetas pegadas a cada valor (formato "Cab. Ofrecidas 289 -- Cab. Operadas 289 -- ...").
+// Distinto del individual (una sola línea densa de números), que maneja parseResultadoComercial.
+function parseResultadoComercialOficina(text) {
+  const titleM = text.match(/[-–—]\s?Resultado Comercial\b/);
+  let pos = titleM ? titleM.index + titleM[0].length : 0;
+  const labels = ["Cab. Ofrecidas", "Cab. Operadas", "Target", "Cab. Vendidas", "Cab. Compradas", "%CCC", "Rendim.", "Soc. Operando", "Cab. Operadas YTD", "Soc. Operando YTD"];
+  const ytdRe = /Soc\.\s*Operando YTD\s*(--|[\d.,]+)\s*%?\s*((?:--|[+-][\d.,]+)\s*(?:↗|↘|→)?)?/g;
+  const out = [];
+  while (true) {
+    const ofrIdx = text.indexOf("Cab. Ofrecidas", pos);
+    if (ofrIdx === -1) break;
+    const name = reconstructRotatedName(text.slice(pos, ofrIdx));
+    ytdRe.lastIndex = ofrIdx;
+    const ytdM = ytdRe.exec(text);
+    const blockEnd = ytdM ? ytdRe.lastIndex : text.length;
+    const blockText = text.slice(ofrIdx, blockEnd);
+    const g = parseLabeledGroup(blockText, labels);
+    if (name && g["Cab. Ofrecidas"]) {
+      out.push({
+        nombre: name,
+        ofrecidas: g["Cab. Ofrecidas"].value, ofrecidasDelta: g["Cab. Ofrecidas"].delta,
+        operadas: g["Cab. Operadas"] ? g["Cab. Operadas"].value : "",
+        operadasDelta: g["Cab. Operadas"] ? g["Cab. Operadas"].delta : "",
+        targetDelta: g["Target"] ? g["Target"].delta : "",
+        ccc: g["%CCC"] ? cleanNum(g["%CCC"].value) : "",
+        soc: g["Soc. Operando"] ? g["Soc. Operando"].value : "",
+        socDelta: g["Soc. Operando"] ? g["Soc. Operando"].delta : "",
+      });
+    }
+    pos = blockEnd;
+  }
+  return out;
+}
+ 
 // "{Nombre} - Cabezas Operadas" -> total + desglose Faena/Invernada (venta/compra/rendim/ccc)
 function parseCabezasOperadasPage(text) {
   const out = { total: null, units: {}, faena: {}, invernada: {} }; // faena/invernada quedan por compat. hacia atrás
@@ -406,7 +581,7 @@ function parseCabezasOperadasPage(text) {
       rendim: totalG["Rendimiento"], ccc: totalG["%CCC"],
     };
   }
-
+ 
   // Intento 1: formato con la etiqueta de la unidad AL FINAL del bloque de valores
   // (ej: "73 +66% ↗ -- -- 5,6 % +0,7 p.p. ↗ 65 % +18 p.p. ↗ Cria")
   const trailing = parseCabezasOperadasBreakdownTrailingLabel(text);
@@ -416,7 +591,7 @@ function parseCabezasOperadasPage(text) {
     out.invernada = trailing.invernada || {};
     return out;
   }
-
+ 
   // Intento 2 (fallback): formato "Faena Invernada" con la etiqueta en el medio
   // (ej: "271 186 Cab. Venta +73% ↗ --")
   const breakdownIdx = text.indexOf("Faena Invernada");
@@ -432,7 +607,7 @@ function parseCabezasOperadasPage(text) {
   out.units = { faena: out.faena, invernada: out.invernada };
   return out;
 }
-
+ 
 // Variante donde, por cada unidad, el nombre de la unidad aparece AL FINAL del
 // bloque de valores (venta/compra/rendim/ccc), en vez de en un header aparte.
 // Ej: "73 +66% ↗ -- -- 5,6 % +0,7 p.p. ↗ 65 % +18 p.p. ↗ Cria"
@@ -462,7 +637,7 @@ function parseCabezasOperadasBreakdownTrailingLabel(text) {
   }
   return out;
 }
-
+ 
 // Busca "labelText" en el string y devuelve [tokenAntes1, tokenAntes2] inmediatamente anteriores (formato agrupado).
 function pairBefore(text, label) {
   const idx = text.indexOf(label);
@@ -479,7 +654,7 @@ function pairAfter(text, label) {
   const m = after.match(/(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘|→)?\s*(--|[+\-][\d.,]+\s?(?:%|p\.p\.))\s*(?:↗|↘|→)?/);
   return m ? [m[1].trim(), m[2].trim()] : null;
 }
-
+ 
 // "{Nombre} - Sociedades Operando" -> totales mes/YTD
 function parseSociedadesOperandoPage(text) {
   const labels = ["Sociedades Operando", "Sociedades Vendedoras", "Sociedades Compradoras", "Sociedades Operando YTD"];
@@ -495,31 +670,33 @@ function parseSociedadesOperandoPage(text) {
     ytdDelta: g["Sociedades Operando YTD"] ? g["Sociedades Operando YTD"].delta : "",
   };
 }
-
+ 
 // Diapositiva propia de una unidad de negocio: "{Nombre} - Faena" / "- Invernada" / "- Cría" / "- MAG"
 function parseUnitOwnPage(text) {
   const labels = ["Cabezas Ofrecidas", "Cabezas Vendidas", "Cabezas Compradas", "Cabezas Operadas", "Soc Vendedoras", "Soc Compradoras"];
   const g = parseLabeledGroup(text, labels);
-  if (!g || !g["Cabezas Ofrecidas"]) return null;
+  // ancla mínima: "Cabezas Operadas" (algunas unidades, típicamente MAG, solo traen
+  // esa tarjeta + Soc Vendedoras, sin Ofrecidas/Vendidas/Compradas)
+  if (!g || !g["Cabezas Operadas"]) return null;
   return {
-    ofrecidas: g["Cabezas Ofrecidas"].value,
-    vendidas: g["Cabezas Vendidas"] ? g["Cabezas Vendidas"].value : "",
-    compradas: g["Cabezas Compradas"] ? g["Cabezas Compradas"].value : "",
-    operadas: g["Cabezas Operadas"] ? g["Cabezas Operadas"].value : "",
+    ofrecidas: g["Cabezas Ofrecidas"] ? g["Cabezas Ofrecidas"].value : "--",
+    vendidas: g["Cabezas Vendidas"] ? g["Cabezas Vendidas"].value : "--",
+    compradas: g["Cabezas Compradas"] ? g["Cabezas Compradas"].value : "--",
+    operadas: g["Cabezas Operadas"].value,
     socVend: g["Soc Vendedoras"] ? g["Soc Vendedoras"].value : "",
     socCompr: g["Soc Compradoras"] ? g["Soc Compradoras"].value : "",
-    deltaOfrecidas: g["Cabezas Ofrecidas"].delta,
-    deltaOperadas: g["Cabezas Operadas"] ? g["Cabezas Operadas"].delta : "",
+    deltaOfrecidas: g["Cabezas Ofrecidas"] ? g["Cabezas Ofrecidas"].delta : "",
+    deltaOperadas: g["Cabezas Operadas"].delta,
   };
 }
-
+ 
 // "{Nombre} - Resumen del mes" -> solo se usa como respaldo de "vs Target" (que no
 // aparece en ninguna otra diapositiva parseable de forma confiable para oficinas).
 function parseResumenDelMesTarget(text) {
   const m = text.match(/Vs Target\s+(--|[+-][\d.,]+%?)\s*(?:↗|↘|→)?/);
   return m ? m[1] : null;
 }
-
+ 
 // "{Nombre} - Nuevas Sociedades Publicadoras" (sin sufijo Faena/Invernada)
 function parseNuevasSociedadesPage(text) {
   const body = stripTitle(text, "Nuevas Sociedades Publicadoras");
@@ -553,7 +730,7 @@ function parseNuevasSociedadesPage(text) {
   }
   return null;
 }
-
+ 
 // "{Nombre} - SACs Enviados" -> tarjetas SACs Enviados / SACs Aprobados / JD Otorgadas (/ JD Pedidas si existe)
 function parseSacsPage(text) {
   const enviados = text.match(/SACs?\s*Enviados\s+(--|[\d.,]+)/i);
@@ -567,16 +744,33 @@ function parseSacsPage(text) {
     jdSol: jdSol && !isDash(jdSol[1]) ? jdSol[1] : "",
   };
 }
-
+ 
+// "{Nombre} - Comportamiento CIs" -> lista [{name, cuit}] de la tabla "CIs por Sociedad".
+// Se usa para armar el directorio de sociedades→CUIT (no forma parte del mail en sí).
+function parseComportamientoCIsPage(text) {
+  const headerNoise = /^(?:Aceptadas|Vistas|Habilitadas|CIs|Social|Razon|CUIT|%)\s+/i;
+  const re = /([A-ZÁÉÍÓÚÑÜa-záéíóúñü0-9.,'&\-\s]{3,70}?)\s+(\d{11})\s+(\d+)\s+(\d+)\s+(\d+)\s?%\s+(\d+)\s+(\d+)\s?%/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    let name = m[1].replace(/\s+/g, " ").trim();
+    // limpia restos del header que a veces quedan pegados al primer nombre
+    let prev;
+    do { prev = name; name = name.replace(headerNoise, "").trim(); } while (name !== prev);
+    if (name.length >= 3) out.push({ name, cuit: m[2] });
+  }
+  return out;
+}
+ 
 function firstLine(text) {
   return text.trim().split(/\s{2,}|(?<=\n)/)[0] || text.slice(0, 60);
 }
-
+ 
 function autofillFromPages(pages) {
   const filled = [];
   const missing = [];
   const setVal = (id, v) => { if (v !== undefined && v !== "" && v !== null) document.getElementById(id).value = v; };
-
+ 
   // Portada: nombre / tipo / mes / año (el orden "Cierre Mensual {nombre}" o "{nombre} Cierre Mensual" varía)
   const portada = pages[0] ? pages[0].text : "";
   const monthYearM = portada.match(/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)\s+(\d{4})/);
@@ -591,27 +785,38 @@ function autofillFromPages(pages) {
     document.getElementById("anio").value = monthYearM[2];
     filled.push("nombre/tipo/mes/año");
   }
-
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null;
+ 
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = null;
   const unitPages = {}; // label -> parsed
-
+ 
   pages.forEach((p) => {
     const title = p.text.slice(0, 120);
-    if (/[-–—]\s?Resultado Comercial\b/.test(title) && !resultado) resultado = parseResultadoComercial(p.text);
+    if (/[-–—]\s?Resultado Comercial\b/.test(title) && !resultado && !asociadosOficina) {
+      if (/Cab\.\s*Ofrecidas/.test(p.text)) {
+        asociadosOficina = parseResultadoComercialOficina(p.text);
+      } else {
+        resultado = parseResultadoComercial(p.text);
+      }
+    }
     if (/[-–—]\s?Cabezas Operadas\b/.test(title) && !cabezasOp) cabezasOp = parseCabezasOperadasPage(p.text);
     if (/[-–—]\s?Sociedades Operando\b/.test(title) && !sociedadesOp) sociedadesOp = parseSociedadesOperandoPage(p.text);
     if (/[-–—]\s?Nuevas Sociedades Publicadoras\b(?!\s?(Faena|Invernada))/.test(title) && !nuevas) nuevas = parseNuevasSociedadesPage(p.text);
     if (/[-–—]\s?Resumen del mes\b/.test(title) && resumenTarget === null) resumenTarget = parseResumenDelMesTarget(p.text);
-
+    if (/[-–—]\s?Comportamiento CIs\b/.test(title)) {
+      const entries = parseComportamientoCIsPage(p.text);
+      const added = mergeCuitEntries(entries);
+      if (added) filled.push(`directorio de sociedades (+${added} nuevas)`);
+    }
+ 
     // páginas propias de unidad: "<algo> - Faena" / "– Invernada" / "- Cría" / "- MAG" (guion normal o largo)
     const unitTitle = p.text.match(/[-–—]\s?(Faena|Invernada|Cria|Cría|MAG)\b/);
-    const looksLikeUnitPage = /Cabezas Ofrecidas/.test(p.text) && /Cabezas Operadas/.test(p.text) && /Soc\s*Vendedoras/.test(p.text);
+    const looksLikeUnitPage = /Cabezas Operadas/.test(p.text) && /Soc\s*Vendedoras/.test(p.text);
     if (unitTitle && looksLikeUnitPage) {
       const label = unitTitle[1];
       const key = label === "Cría" ? "cria" : label.toLowerCase();
       if (!unitPages[key]) unitPages[key] = parseUnitOwnPage(p.text);
     }
-
+ 
     // diapositiva de SACs (tarjetas "SACs Enviados/Aprobados/JD Otorgadas")
     if (/SACs?\s*Enviados\s+(?:--|[\d.,]+)/.test(p.text) || /SACS?\s*aprob|JD\s*[Oo]torgadas/.test(p.text)) {
       const sacs = parseSacsPage(p.text);
@@ -624,7 +829,7 @@ function autofillFromPages(pages) {
       if (!filled.includes("SACs")) filled.push("SACs");
     }
   });
-
+ 
   // ---- hero + sociedades desde Resultado Comercial (o, si no está, desde Cabezas Operadas) ----
   if (resultado) {
     setVal("h_ofrecidas", resultado.ofrecidas);
@@ -665,7 +870,7 @@ function autofillFromPages(pages) {
   } else {
     missing.push("hero (no encontré ni 'Resultado Comercial' ni 'Cabezas Operadas')");
   }
-
+ 
   // ---- sociedades operando (preferimos esta página dedicada sobre Resultado Comercial) ----
   if (sociedadesOp) {
     setVal("s_mes", sociedadesOp.mes);
@@ -676,7 +881,7 @@ function autofillFromPages(pages) {
   } else {
     missing.push("sociedades operando");
   }
-
+ 
   // ---- nuevas sociedades ----
   if (nuevas) {
     setVal("n_cant", nuevas.cant);
@@ -689,12 +894,12 @@ function autofillFromPages(pages) {
   } else {
     missing.push("nuevas sociedades");
   }
-
+ 
   // ---- unidades de negocio (Cría / Faena / Invernada / MAG) ----
   UNIDADES.forEach((u) => {
     const own = unitPages[u.key];
     const fromTotal = cabezasOp && cabezasOp.units ? cabezasOp.units[u.key] : null;
-
+ 
     if (!own) {
       // no había diapositiva propia de esta unidad este mes -> sin actividad
       document.getElementById(`${u.key}_sin`).checked = true;
@@ -703,24 +908,39 @@ function autofillFromPages(pages) {
     }
     document.getElementById(`${u.key}_sin`).checked = false;
     document.getElementById(`${u.key}_sin`).dispatchEvent(new Event("change"));
-
+ 
     setVal(`${u.key}_operadas`, cleanNum(own.operadas));
     setVal(`${u.key}_ofrecidas`, cleanNum(own.ofrecidas));
     setVal(`${u.key}_vendidas`, cleanNum(own.vendidas));
     setVal(`${u.key}_compradas`, isDash(own.compradas) ? "--" : cleanNum(own.compradas));
-    if (own.deltaOperadas) setVal(`${u.key}_opVar`, valOf(own.deltaOperadas));
-    if (own.deltaOfrecidas) setVal(`${u.key}_ofVar`, valOf(own.deltaOfrecidas));
+    if (own.deltaOperadas && !isDash(own.deltaOperadas)) setVal(`${u.key}_opVar`, cleanNum(own.deltaOperadas));
+    if (own.deltaOfrecidas && !isDash(own.deltaOfrecidas)) setVal(`${u.key}_ofVar`, cleanNum(own.deltaOfrecidas));
     if (fromTotal && fromTotal.ccc) {
       setVal(`${u.key}_ccc`, cleanNum(fromTotal.ccc.val));
     }
     filled.push(u.label);
   });
-
+ 
+  // ---- resultado comercial por asociado (solo oficinas) ----
+  if (asociadosOficina && asociadosOficina.length) {
+    document.getElementById("asociadosWrap").innerHTML = "";
+    asociadosOficina.forEach((a) => renderAsociadoRow({
+      nombre: a.nombre,
+      ofrecidas: cleanNum(a.ofrecidas), ofrecidasVar: valOf(a.ofrecidasDelta), ofrecidasSign: signOf(a.ofrecidasDelta),
+      operadas: cleanNum(a.operadas), operadasVar: valOf(a.operadasDelta), operadasSign: signOf(a.operadasDelta),
+      targetVar: valOf(a.targetDelta), targetSign: signOf(a.targetDelta),
+      ccc: a.ccc,
+      soc: a.soc, socVar: valOf(a.socDelta), socSign: signOf(a.socDelta),
+    }));
+    filled.push(`Resultado comercial por asociado (${asociadosOficina.length})`);
+  }
+ 
   updateStepIndicators();
+  renderCuitDirectoryPanel();
   return { filled, missing };
 }
-
-
+ 
+ 
 // ---- helpers de formato / color --------------------------------------------
 function num(v) {
   return (v === undefined || v === null || v === "") ? "" : v;
@@ -747,8 +967,8 @@ function varSmall(value, sign, suffix) {
   const positive = sign !== "neg";
   const color = positive ? "#1E8449" : "#C0392B";
   const arrow = positive ? "▲" : "▼";
-  const clean = String(value).replace(/^-/, "");
-  return `<span style="font-weight:bold;color:${color};">${arrow}${clean}${suffix || "%"}</span>`;
+  const clean = String(value).replace(/^[+-]/, "");
+  return `<span style="font-weight:bold;color:${color};">${arrow}${clean}${suffix === undefined ? "%" : suffix}</span>`;
 }
 function barWidth(operadas, maxOperadas) {
   const v = parseFloat(String(operadas).replace(/\./g, "").replace(",", "."));
@@ -771,11 +991,11 @@ function driveExportXlsx(link) {
   if (!id) return link || "";
   return `https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx`;
 }
-
+ 
 // ---- lectura del formulario -------------------------------------------------
 function readState() {
   const g = (id) => document.getElementById(id).value.trim();
-
+ 
   const unidades = {};
   UNIDADES.forEach((u) => {
     const sinActividad = document.getElementById(`${u.key}_sin`).checked;
@@ -794,15 +1014,23 @@ function readState() {
       compradas: sinActividad ? "--" : (g(`${u.key}_compradas`) || "--"),
     };
   });
-
+ 
   const asociados = Array.from(document.querySelectorAll("#asociadosWrap .assoc-row")).map((row) => ({
     nombre: row.querySelector(".a_nombre").value.trim(),
     ofrecidas: row.querySelector(".a_ofrecidas").value.trim(),
+    ofrecidasVar: row.dataset.ofrecidasVar || "",
+    ofrecidasSign: row.dataset.ofrecidasSign || "pos",
     operadas: row.querySelector(".a_operadas").value.trim(),
+    operadasVar: row.dataset.operadasVar || "",
+    operadasSign: row.dataset.operadasSign || "pos",
+    targetVar: row.dataset.targetVar || "",
+    targetSign: row.dataset.targetSign || "neg",
     ccc: row.querySelector(".a_ccc").value.trim(),
     soc: row.querySelector(".a_soc").value.trim(),
+    socVar: row.dataset.socVar || "",
+    socSign: row.dataset.socSign || "pos",
   })).filter((a) => a.nombre);
-
+ 
   return {
     tipo: g("tipo") || document.getElementById("tipo").value,
     nombre: g("nombre"),
@@ -811,6 +1039,7 @@ function readState() {
     anio: g("anio"),
     linkPdf: g("linkPdf"),
     linkCis: g("linkCis"),
+    headerImage: customHeaderImage,
     hero: {
       operadas: g("h_operadas"),
       ofrecidas: g("h_ofrecidas"),
@@ -847,7 +1076,7 @@ function readState() {
     }),
   };
 }
-
+ 
 // ---- construcción del HTML del mail -----------------------------------------
 function buildEmailHtml(s) {
   const A = window.DCAC_ASSETS;
@@ -855,33 +1084,37 @@ function buildEmailHtml(s) {
   const isRepresentante = s.tipo === "representante";
   const tituloHeader = s.nombre || (isOficina ? "Oficina" : "Asociado");
   const badge = `${s.mes.toUpperCase()} ${s.anio}`;
-
+ 
   // Etiqueta de comparación: "vs Jul 25" para cierres mensuales,
   // "vs mismo período 25'" para trimestrales/cuatrimestrales.
   const anioAnt2 = String(parseInt(s.anio, 10) - 1).slice(-2);
   const vsLabel = (s.periodicidad && s.periodicidad !== "mensual")
     ? `vs mismo período ${anioAnt2}'`
     : `vs ${s.mes.slice(0, 3)} ${anioAnt2}`;
-
+ 
+  // Imagen de fondo del header: la que subió el usuario, o la de fábrica (foto de vacas).
+  const headerImgData = (s.headerImage && s.headerImage.data) ? s.headerImage.data : A.headerBg;
+  const headerImgMime = (s.headerImage && s.headerImage.mime) ? s.headerImage.mime : "image/jpeg";
+ 
   // ---- unidades ----
   const maxOperadas = Math.max(
     ...Object.values(s.unidades).map((u) => parseFloat(String(u.operadas).replace(/\./g, "").replace(",", ".")) || 0),
     1
   );
   let totalOperadas = 0, totalOfrecidas = 0, totalVendidas = 0, totalCompradas = 0;
-
+ 
   const unidadRows = UNIDADES.map((uDef, idx) => {
     const u = s.unidades[uDef.key];
     const bgAlt = idx % 2 === 1 ? "background-color:#FAFBFC;" : "";
     const borderBottom = idx < UNIDADES.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
     const cc = cccColor(u.ccc);
     const bw = u.sinActividad ? 1 : barWidth(u.operadas, maxOperadas);
-
+ 
     totalOperadas += parseFloat(String(u.operadas).replace(/\./g, "").replace(",", ".")) || 0;
     if (u.ofrecidas !== "--") totalOfrecidas += parseFloat(String(u.ofrecidas).replace(/\./g, "").replace(",", ".")) || 0;
     totalVendidas += parseFloat(String(u.vendidas).replace(/\./g, "").replace(",", ".")) || 0;
     if (u.compradas !== "--") totalCompradas += parseFloat(String(u.compradas).replace(/\./g, "").replace(",", ".")) || 0;
-
+ 
     return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
       `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
@@ -896,21 +1129,21 @@ function buildEmailHtml(s) {
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.compradas}</td></tr>`;
   }).join("");
-
+ 
   const totalRow = `<tr><td style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">Total ${isOficina ? "oficina" : tituloHeader}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:16px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td></tr>`;
-
+ 
   // ---- cards: sociedades / nuevas / sacs ----
   const cardsWidth = s.sacsEnabled ? "31.3%" : "48.5%";
   const nuevasBreakdown = ["inv", "cria", "fae"]
     .filter((k) => s.nuevas[k] && s.nuevas[k] !== "0")
     .map((k) => `${k.toUpperCase() === "CRIA" ? "CRÍA" : k.toUpperCase()} ${s.nuevas[k]}`)
     .join(" · ");
-
+ 
   const cardsBlock = `<tr><td style="padding:24px 28px 4px 28px;">
 <table role="presentation" width="100%"><tr>
 <td style="width:${cardsWidth};background-color:#EAF2FB;border-radius:10px;padding:14px;vertical-align:top;">
@@ -941,26 +1174,36 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
 </td>` : ""}
 </tr></table>
 </td></tr>`;
-
+ 
   // ---- resultado comercial por asociado (solo oficina) ----
   let asociadosBlock = "";
   if (isOficina && s.asociados.length) {
     const rows = s.asociados.map((a, idx) => {
       const alt = idx % 2 === 1;
       const cc = cccColor(a.ccc);
-      return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : ""}${alt ? "background-color:#FAFBFC;" : ""}color:#33424F;">${escapeHtml(a.nombre)}</td>
-<td align="center" style="padding:12px 10px;${idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : ""}background-color:#F5F9FD;">
+      const bb = idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
+      const altBg = alt ? "background-color:#FAFBFC;" : "";
+      const ofrVarLine = a.ofrecidasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
+      const opVarLine = a.operadasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
+      const targetVarLine = a.targetVar ? `<div style="font-size:10px;margin-top:1px;">${varSmall(a.targetVar, a.targetSign)} <span style="color:#9AA7B2;">vs target</span></div>` : "";
+      const socVarLine = a.socVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
+      return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
+<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
+${ofrVarLine}
 </td>
-<td align="center" style="padding:12px 10px;${idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : ""}background-color:#EAF2FB;">
+<td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
+${opVarLine}
+${targetVarLine}
 </td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : ""}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
-<td align="center" style="padding:12px 10px;${idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : ""}">
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
+<td align="center" style="padding:12px 10px;${bb}">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.soc || "--"}</div>
+${socVarLine}
 </td></tr>`;
     }).join("");
-
+ 
     asociadosBlock = `<tr><td style="padding:20px 28px 4px 28px;">
 <div style="color:#152C42;font-size:14px;font-weight:800;margin-bottom:12px;">Resultado comercial por asociado</div>
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
@@ -975,27 +1218,28 @@ ${rows}
 </table>
 </td></tr>`;
   }
-
+ 
   // ---- recuadros dinámicos ----
   const recuadrosBlock = s.recuadros.map((r) => buildRecuadroBlock(r)).join("\n");
-
+ 
   // ---- ensamblado final ----
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre Mensual - ${escapeHtml(tituloHeader)} - ${s.mes} ${s.anio}</title></head>
 <body style="margin:0;padding:0;background-color:#F1F3F6;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:32px 0;"><tr><td align="center">
 <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);">
-
-<tr><td style="background-color:#2E6DA4;">
-<div style="background-image:url('data:image/jpeg;base64,${A.headerBg}');background-size:cover;background-position:center center;background-repeat:no-repeat;background-color:#2E6DA4;padding:28px 28px 24px 28px;text-align:center;">
-<img src="data:image/png;base64,${A.logo}" width="40" height="41" alt="dCaC" style="display:block;margin:0 auto 12px auto;">
-<div style="color:#CFE0F0;font-size:11px;font-weight:bold;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,0.55);">Cierre Mensual</div>
-<div style="color:#ffffff;font-size:23px;font-weight:800;margin-top:4px;text-shadow:0 1px 5px rgba(0,0,0,0.6);">${escapeHtml(tituloHeader)}</div>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px auto 0 auto;"><tr>
-<td style="background-color:#152C42;color:#fff;font-size:11px;font-weight:bold;padding:5px 14px;border-radius:12px;letter-spacing:.03em;">${badge}</td>
-</tr></table>
-</div>
+ 
+<tr><td style="background-color:#ffffff;">
+<img src="data:${headerImgMime};base64,${headerImgData}" width="640" style="display:block;width:100%;height:auto;max-height:180px;">
 </td></tr>
-
+<tr><td style="background-color:#ffffff;padding:20px 28px 4px 28px;text-align:center;">
+<img src="data:image/png;base64,${A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
+<div style="color:#8A97A3;font-size:11px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;">Cierre Mensual</div>
+<div style="color:#152C42;font-size:22px;font-weight:800;margin-top:8px;">${escapeHtml(tituloHeader)}</div>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px auto 0 auto;"><tr>
+<td style="background-color:#EAF2FB;color:#1B4F8C;font-size:11px;font-weight:bold;padding:5px 14px;border-radius:12px;letter-spacing:.03em;">${badge}</td>
+</tr></table>
+</td></tr>
+ 
 <tr><td style="padding:28px 28px 6px 28px;">
 <table role="presentation" width="100%"><tr>
 <td style="width:54%;vertical-align:top;">
@@ -1029,7 +1273,7 @@ ${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;
 </td>
 </tr></table>
 </td></tr>
-
+ 
 <tr><td style="padding:26px 28px 4px 28px;">
 <div style="color:#152C42;font-size:14px;font-weight:800;margin-bottom:12px;">Actividad por unidad de negocio</div>
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
@@ -1045,14 +1289,14 @@ ${unidadRows}
 ${totalRow}
 </table>
 </td></tr>
-
+ 
 ${cardsBlock}
 ${asociadosBlock}
 ${recuadrosBlock}
-
+ 
 <tr><td style="padding:24px 28px 30px 28px;">
 <a href="${s.linkPdf || "#"}" target="_blank" style="display:block;text-align:center;background-color:#2E6DA4;background-image:linear-gradient(135deg,#3E82C4,#1B4F8C);color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:16px 0;border-radius:14px;letter-spacing:.01em;box-shadow:0 6px 16px rgba(27,79,140,0.32);">📄&nbsp;&nbsp;Ver reporte completo&nbsp;&nbsp;→</a>
-
+ 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;"><tr>
 <td style="width:48.5%;vertical-align:top;">
 <a href="https://pulse.dcac.ar/" target="_blank" style="display:block;text-decoration:none;background-color:#F1FAF5;border:1px solid #CDEBDA;border-radius:14px;padding:12px;">
@@ -1089,18 +1333,129 @@ ${recuadrosBlock}
 </a>
 </td>
 </tr></table>
-
+ 
 <div style="text-align:center;font-size:11px;color:#9AA7B2;margin-top:16px;">deCampoaCampo · Reporte generado automáticamente</div>
 </td></tr>
-
+ 
 </table></td></tr></table></body></html>`;
 }
-
+ 
 // ---- borradores / historial (localStorage, todo queda en este navegador) ---
 const DRAFTS_KEY = "dcac_cierre_drafts_v1";
 const AUTOSAVE_KEY = "dcac_cierre_autosave_v1";
+ 
+// ---- directorio de sociedades → CUIT (localStorage, se arma solo leyendo PDFs) ---
+const CUIT_DIR_KEY = "dcac_cuit_directory_v1";
+ 
+function normalizeSocietyKey(name) {
+  return name.trim().toUpperCase().replace(/\s+/g, " ");
+}
+function loadCuitDirectory() {
+  try {
+    return JSON.parse(localStorage.getItem(CUIT_DIR_KEY) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+function saveCuitDirectory(dir) {
+  try {
+    localStorage.setItem(CUIT_DIR_KEY, JSON.stringify(dir));
+  } catch (e) { /* silencioso */ }
+}
+// entries: [{name, cuit}]. Devuelve cuántas entradas nuevas se agregaron.
+function mergeCuitEntries(entries) {
+  const dir = loadCuitDirectory();
+  let added = 0;
+  entries.forEach(({ name, cuit }) => {
+    const key = normalizeSocietyKey(name);
+    if (!key || key.length < 3 || !/^\d{11}$/.test(cuit)) return;
+    if (!dir[key]) added++;
+    dir[key] = { display: dir[key] ? dir[key].display : name, cuit }; // no pisa el nombre ya guardado
+  });
+  if (added) saveCuitDirectory(dir);
+  return added;
+}
+function addCuitManual(name, cuit) {
+  const key = normalizeSocietyKey(name);
+  if (!key) return false;
+  const dir = loadCuitDirectory();
+  dir[key] = { display: name.trim(), cuit: cuit.trim() };
+  saveCuitDirectory(dir);
+  return true;
+}
+function deleteCuitEntry(key) {
+  const dir = loadCuitDirectory();
+  delete dir[key];
+  saveCuitDirectory(dir);
+}
+ 
+function renderCuitDirectoryPanel() {
+  const wrap = document.getElementById("cuitDirList");
+  const countEl = document.getElementById("cuitDirCount");
+  const dir = loadCuitDirectory();
+  const keys = Object.keys(dir).sort((a, b) => dir[a].display.localeCompare(dir[b].display));
+  countEl.textContent = keys.length + (keys.length === 1 ? " sociedad" : " sociedades");
+  if (!keys.length) {
+    wrap.innerHTML = `<div class="draft-empty">Todavía no hay sociedades. Se cargan solas al leer un PDF que tenga la diapositiva "Comportamiento CIs", o las agregás a mano abajo.</div>`;
+    return;
+  }
+  const filter = (document.getElementById("cuitDirSearch").value || "").toLowerCase();
+  const filtered = filter ? keys.filter((k) => dir[k].display.toLowerCase().includes(filter)) : keys;
+  wrap.innerHTML = filtered.slice(0, 200).map((k) => `<div class="draft-item">
+    <div class="draft-info">
+      <div class="draft-name">${escapeHtml(dir[k].display)}</div>
+      <div class="draft-meta">CUIT ${escapeHtml(dir[k].cuit)}</div>
+    </div>
+    <div class="draft-actions"><button class="btn-danger" data-delcuit="${escapeAttr(k)}">✕</button></div>
+  </div>`).join("") || `<div class="draft-empty">Sin resultados para "${escapeHtml(filter)}".</div>`;
+  wrap.querySelectorAll("[data-delcuit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (confirm("¿Quitar esta sociedad del directorio?")) {
+        deleteCuitEntry(btn.getAttribute("data-delcuit"));
+        renderCuitDirectoryPanel();
+      }
+    });
+  });
+}
+ 
+// Reemplaza menciones de sociedades conocidas por links al vademécum, dentro de un texto libre.
+// Se hace ANTES de convertir a HTML: se marcan los matches con un token inerte, y recién
+// después de escapar el resto del texto se reemplaza el token por el <a> real (evita problemas
+// de doble-escapado y de que el link se rompa con caracteres especiales del nombre).
+function linkifySocieties(text) {
+  const dir = loadCuitDirectory();
+  const entries = Object.values(dir).sort((a, b) => b.display.length - a.display.length);
+  if (!entries.length) return { text, tokens: [] };
+  const tokens = [];
+  let out = "";
+  let i = 0;
+  outer: while (i < text.length) {
+    for (const e of entries) {
+      const cand = text.slice(i, i + e.display.length);
+      if (cand.toLowerCase() === e.display.toLowerCase()) {
+        const tok = `\u0001${tokens.length}\u0002`;
+        tokens.push({ text: cand, cuit: e.cuit });
+        out += tok;
+        i += e.display.length;
+        continue outer;
+      }
+    }
+    out += text[i];
+    i++;
+  }
+  return { text: out, tokens };
+}
+function applyLinkTokens(html, tokens) {
+  return html.replace(/\u0001(\d+)\u0002/g, (_, idx) => {
+    const t = tokens[Number(idx)];
+    if (!t) return "";
+    return `<a href="https://vademecum.dcac.ar/?cuit=${encodeURIComponent(t.cuit)}" target="_blank" style="color:#2E6DA4;text-decoration:underline;">${escapeHtml(t.text)}</a>`;
+  });
+}
+ 
+ 
 let suppressAutosave = false; // evita autoguardar mientras estamos restaurando un borrador
-
+ 
 function loadDrafts() {
   try {
     return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]");
@@ -1115,7 +1470,7 @@ function saveDrafts(list) {
     alert("No pude guardar el borrador (¿el navegador tiene el almacenamiento lleno o bloqueado?).");
   }
 }
-
+ 
 function saveDraft() {
   const state = readState();
   const label = state.nombre
@@ -1129,13 +1484,13 @@ function saveDraft() {
   saveDrafts(drafts);
   renderDraftsList();
 }
-
+ 
 function deleteDraft(id) {
   const drafts = loadDrafts().filter((d) => d.id !== id);
   saveDrafts(drafts);
   renderDraftsList();
 }
-
+ 
 function loadDraft(id) {
   const draft = loadDrafts().find((d) => d.id === id);
   if (!draft) return;
@@ -1147,7 +1502,7 @@ function loadDraft(id) {
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
-
+ 
 function renderDraftsList() {
   const wrap = document.getElementById("draftsList");
   const drafts = loadDrafts();
@@ -1178,7 +1533,7 @@ function renderDraftsList() {
     });
   });
 }
-
+ 
 // Chip "✓ completo" en el título de cada paso, para saber de un vistazo qué falta.
 function updateStepIndicators() {
   const setBadge = (summaryId, isDone) => {
@@ -1197,7 +1552,7 @@ function updateStepIndicators() {
     }
   };
   const v = (id) => (document.getElementById(id).value || "").trim();
-
+ 
   setBadge("sumDatos", !!v("nombre") && !!v("linkPdf"));
   setBadge("sumHero", !!v("h_operadas"));
   const anyUnidad = UNIDADES.some((u) => !document.getElementById(`${u.key}_sin`).checked && v(`${u.key}_operadas`));
@@ -1206,7 +1561,7 @@ function updateStepIndicators() {
   const contenidos = Array.from(document.querySelectorAll("#recuadrosWrap .recuadro-card .r_contenido"));
   setBadge("sumRecuadros", contenidos.some((t) => t.value.trim()));
 }
-
+ 
 function autosave() {
   if (suppressAutosave) return;
   updateStepIndicators();
@@ -1217,7 +1572,7 @@ function autosave() {
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), state }));
   } catch (e) { /* silencioso: el autoguardado nunca debe interrumpir al usuario */ }
 }
-
+ 
 function checkAutosaveBanner() {
   let saved;
   try {
@@ -1246,11 +1601,11 @@ function checkAutosaveBanner() {
     banner.style.display = "none";
   });
 }
-
+ 
 // Reconstruye todo el formulario a partir de un objeto como el que devuelve readState().
 function restoreState(state) {
   const setv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ""; };
-
+ 
   document.getElementById("tipo").value = state.tipo || "asociado";
   onTipoChange();
   setv("nombre", state.nombre);
@@ -1259,14 +1614,16 @@ function restoreState(state) {
   setv("anio", state.anio);
   setv("linkPdf", state.linkPdf);
   setv("linkCis", state.linkCis);
-
+  customHeaderImage = state.headerImage || null;
+  updateHeaderImagePreview();
+ 
   const h = state.hero || {};
   setv("h_operadas", h.operadas); setv("h_ofrecidas", h.ofrecidas);
   setv("h_varAnio", h.varAnio); setv("h_varAnioSigno", h.varAnioSigno || "pos");
   setv("h_varTarget", h.varTarget); setv("h_varTargetSigno", h.varTargetSigno || "neg");
   setv("h_rendim", h.rendim); setv("h_rendimVar", h.rendimVar); setv("h_rendimSigno", h.rendimSigno || "neg");
   setv("h_ccc", h.ccc); setv("h_cccVar", h.cccVar); setv("h_cccSigno", h.cccSigno || "pos");
-
+ 
   UNIDADES.forEach((u) => {
     const un = (state.unidades && state.unidades[u.key]) || {};
     const chk = document.getElementById(`${u.key}_sin`);
@@ -1280,28 +1637,28 @@ function restoreState(state) {
     setv(`${u.key}_vendidas`, un.sinActividad ? "" : un.vendidas);
     setv(`${u.key}_compradas`, un.sinActividad ? "" : (un.compradas === "--" ? "" : un.compradas));
   });
-
+ 
   const s = state.sociedades || {};
   setv("s_mes", s.mes); setv("s_mesVar", s.mesVar); setv("s_ytd", s.ytd); setv("s_ytdVar", s.ytdVar);
-
+ 
   const n = state.nuevas || {};
   setv("n_cant", n.cant); setv("n_var", n.varr); setv("n_ccc", n.ccc);
   setv("n_inv", n.inv); setv("n_cria", n.cria); setv("n_fae", n.fae);
-
+ 
   const sacsChk = document.getElementById("sacsEnabled");
   sacsChk.checked = !!state.sacsEnabled;
   document.getElementById("sacsFields").style.display = sacsChk.checked ? "block" : "none";
   const sacs = state.sacs || {};
   setv("sacs_env", sacs.env); setv("sacs_apr", sacs.apr); setv("jd_sol", sacs.jdSol); setv("jd_otor", sacs.jdOtor);
-
+ 
   document.getElementById("asociadosWrap").innerHTML = "";
   (state.asociados || []).forEach((a) => renderAsociadoRow(a));
-
+ 
   renderRecuadros(state.recuadros && state.recuadros.length ? state.recuadros : DEFAULT_RECUADROS);
   updateStepIndicators();
 }
-
-
+ 
+ 
 function onGenerate() {
   const state = readState();
   if (!state.nombre) {
@@ -1315,14 +1672,14 @@ function onGenerate() {
   frame.srcdoc = lastGeneratedHtml;
   document.getElementById("genStatus").textContent = "Generado " + new Date().toLocaleTimeString();
 }
-
+ 
 function onCopy() {
   if (!lastGeneratedHtml) { alert("Primero generá el HTML."); return; }
   navigator.clipboard.writeText(lastGeneratedHtml).then(() => {
     document.getElementById("genStatus").textContent = "Copiado al portapapeles ✓";
   });
 }
-
+ 
 function onDownload() {
   if (!lastGeneratedHtml) { alert("Primero generá el HTML."); return; }
   const state = readState();
@@ -1335,3 +1692,4 @@ function onDownload() {
   a.click();
   URL.revokeObjectURL(url);
 }
+ 
