@@ -1,24 +1,4 @@
 
-/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-App · JS
 // ============================================================================
 // Generador de Cierre Mensual — dCaC
 // Todo corre en el navegador. No hay backend: los links de Drive y el PDF
