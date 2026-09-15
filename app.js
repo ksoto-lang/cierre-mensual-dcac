@@ -1205,7 +1205,7 @@ ${rows}
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre Mensual - ${escapeHtml(tituloHeader)} - ${s.mes} ${s.anio}</title></head>
 <body style="margin:0;padding:0;background-color:#F1F3F6;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:32px 0;"><tr><td align="center">
-<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);border:1px solid #152C42;">
 
 <tr><td style="background-color:#ffffff;">
 <img src="data:${headerImgMime};base64,${headerImgData}" width="640" style="display:block;width:100%;height:auto;max-height:180px;">
