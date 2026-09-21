@@ -113,6 +113,7 @@ function renderUnidades() {
       <div><label>Ofrecidas</label><input type="text" id="${u.key}_ofrecidas"></div>
       <div><label>Var. ofrecidas (%)</label><input type="text" id="${u.key}_ofVar"></div>
       <div><label>% CCC</label><input type="text" id="${u.key}_ccc" placeholder="-- si no aplica"></div>
+      <div><label>Rendim %</label><input type="text" id="${u.key}_rendim" placeholder="-- si no aplica"></div>
       <div><label>Vendidas</label><input type="text" id="${u.key}_vendidas"></div>
       <div><label>Compradas</label><input type="text" id="${u.key}_compradas" placeholder="-- si no compra"></div>
     </div>
@@ -121,7 +122,7 @@ function renderUnidades() {
   UNIDADES.forEach((u) => {
     document.getElementById(`${u.key}_sin`).addEventListener("change", (e) => {
       const disabled = e.target.checked;
-      ["operadas", "opVar", "ofrecidas", "ofVar", "ccc", "vendidas", "compradas"].forEach((f) => {
+      ["operadas", "opVar", "ofrecidas", "ofVar", "ccc", "rendim", "vendidas", "compradas"].forEach((f) => {
         document.getElementById(`${u.key}_${f}`).disabled = disabled;
       });
     });
@@ -724,6 +725,20 @@ function parseSacsPage(text) {
   };
 }
 
+// "{Nombre} - SACs Enviados" (tabla de DETALLE, una fila por sociedad) -> suma de
+// "JD Pedidas" de todas las filas. La tarjeta resumen del PDF nunca trae un total de
+// "JD Solicitadas" (solo trae "JD Otorgadas"), así que el total real de pedidas hay
+// que sacarlo sumando la columna de la tabla — nunca asumir 0 cuando no se encuentra.
+function sumJdPedidasFromDetailTable(text) {
+  const re = /(\d+)(?:\s+\d+)?\s+(?:INV|FAE|CRIA|MAG)\s+\d{1,2}\/\d{1,2}\/\d{2,4}/g;
+  let m, sum = 0, count = 0;
+  while ((m = re.exec(text)) !== null) {
+    sum += parseInt(m[1], 10) || 0;
+    count++;
+  }
+  return count ? String(sum) : "";
+}
+
 // "{Nombre} - Comportamiento CIs" -> lista [{name, cuit}] de la tabla "CIs por Sociedad".
 // Se usa para armar el directorio de sociedades→CUIT (no forma parte del mail en sí).
 function parseComportamientoCIsPage(text) {
@@ -765,7 +780,7 @@ function autofillFromPages(pages) {
     filled.push("nombre/tipo/mes/año");
   }
 
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = null;
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = null, sacsJdSolSum = null;
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
@@ -806,6 +821,13 @@ function autofillFromPages(pages) {
       document.getElementById("sacsEnabled").checked = true;
       document.getElementById("sacsFields").style.display = "block";
       if (!filled.includes("SACs")) filled.push("SACs");
+    }
+
+    // tabla de detalle de SACs (una fila por sociedad, con "JD Pedidas") -> se usa para
+    // sacar el total real de JD solicitadas, que la tarjeta resumen nunca trae.
+    if (sacsJdSolSum === null) {
+      const sum = sumJdPedidasFromDetailTable(p.text);
+      if (sum) sacsJdSolSum = sum;
     }
   });
 
@@ -897,6 +919,9 @@ function autofillFromPages(pages) {
     if (fromTotal && fromTotal.ccc) {
       setVal(`${u.key}_ccc`, cleanNum(fromTotal.ccc.val));
     }
+    if (fromTotal && fromTotal.rendim) {
+      setVal(`${u.key}_rendim`, cleanNum(fromTotal.rendim.val));
+    }
     filled.push(u.label);
   });
 
@@ -912,6 +937,14 @@ function autofillFromPages(pages) {
       soc: a.soc, socVar: valOf(a.socDelta), socSign: signOf(a.socDelta),
     }));
     filled.push(`Resultado comercial por asociado (${asociadosOficina.length})`);
+  }
+
+  // JD Solicitadas: si no vino un total directo de la tarjeta resumen, usamos la suma
+  // de la tabla de detalle. Nunca dejamos que quede en 0 por defecto si no lo sabemos
+  // (0 sería incorrecto si hay JD Otorgadas > 0 — no se puede otorgar más de lo pedido).
+  if (!document.getElementById("jd_sol").value && sacsJdSolSum) {
+    setVal("jd_sol", sacsJdSolSum);
+    filled.push("JD Solicitadas (sumado de la tabla de detalle)");
   }
 
   updateStepIndicators();
@@ -932,14 +965,15 @@ function cccColor(pct) {
   if (p >= 40) return { color: "#B9770E" };
   return { color: "#C0392B" };
 }
-function varTagInline(value, sign) {
+function varTagInline(value, sign, label) {
   // usado en las cajas grandes del hero (con fondo)
   if (value === "" || value === undefined) return "";
   const positive = sign !== "neg";
   const bg = positive ? "#EAF7EE" : "#FDECEA";
   const color = positive ? "#1E8449" : "#C0392B";
   const arrow = positive ? "▲" : "▼";
-  return `<td style="background-color:${bg};color:${color};font-size:11px;font-weight:bold;padding:4px 10px;border-radius:10px;">${arrow} ${value}${String(value).includes("%") ? "" : "%"}</td>`;
+  const suffix = String(value).includes("%") ? "" : "%";
+  return `<td style="background-color:${bg};color:${color};font-size:11px;font-weight:bold;padding:4px 10px;border-radius:10px;">${arrow} ${value}${suffix}${label ? ` ${label}` : ""}</td>`;
 }
 function varSmall(value, sign, suffix) {
   if (value === "" || value === undefined) return `<span style="color:#B4BEC7;">—</span>`;
@@ -989,6 +1023,7 @@ function readState() {
       ofVar: sinActividad ? "" : g(`${u.key}_ofVar`),
       ofSign: document.getElementById(`${u.key}_ofVar`).value.trim().startsWith("-") ? "neg" : "pos",
       ccc: sinActividad ? "--" : (g(`${u.key}_ccc`) || "--"),
+      rendim: sinActividad ? "--" : (g(`${u.key}_rendim`) || "--"),
       vendidas: sinActividad ? "0" : (g(`${u.key}_vendidas`) || "0"),
       compradas: sinActividad ? "--" : (g(`${u.key}_compradas`) || "--"),
     };
@@ -1070,6 +1105,7 @@ function buildEmailHtml(s) {
   const vsLabel = (s.periodicidad && s.periodicidad !== "mensual")
     ? `vs mismo período ${anioAnt2}'`
     : `vs ${s.mes.slice(0, 3)} ${anioAnt2}`;
+  const vsYtdLabel = `Vs YTD ${anioAnt2}'`;
 
   // Imagen de fondo del header: la que subió el usuario, o la de fábrica (foto de vacas).
   const headerImgData = (s.headerImage && s.headerImage.data) ? s.headerImage.data : A.headerBg;
@@ -1105,6 +1141,7 @@ function buildEmailHtml(s) {
       (u.ofrecidas !== "--" ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "") +
       `</td>` +
       `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
+      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.rendim === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.rendim + "%"}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.compradas}</td></tr>`;
   }).join("");
@@ -1113,6 +1150,7 @@ function buildEmailHtml(s) {
     `<td align="center" style="padding:13px 10px;font-size:16px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
+    `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td></tr>`;
 
@@ -1136,7 +1174,7 @@ function buildEmailHtml(s) {
 <td style="width:50%;vertical-align:top;border-left:1px solid #D7E3F0;padding-left:10px;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">YTD</div>
 <div style="color:#152C42;font-size:18px;font-weight:800;margin-top:2px;">${s.sociedades.ytd || "--"}</div>
-<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.ytdVar || "—"} ${vsLabel})</div>
+<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.ytdVar || "—"} ${vsYtdLabel})</div>
 </td>
 </tr></table>
 </td><td style="width:3%;"></td>
@@ -1149,7 +1187,7 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
 <div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">SACS aprob.</div>
 <div style="color:#152C42;font-size:20px;font-weight:800;margin-top:2px;">${s.sacs.apr || "0"}/${s.sacs.env || "0"} <span style="font-size:11px;color:#B9770E;font-weight:normal;">enviados</span></div>
 <div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;margin-top:9px;">JD otorgadas</div>
-<div style="color:#152C42;font-size:16px;font-weight:800;margin-top:2px;">${s.sacs.jdOtor || "0"} / ${s.sacs.jdSol || "0"} <span style="font-size:11px;color:#9C7A2E;font-weight:normal;">JD Solicitadas</span></div>
+<div style="color:#152C42;font-size:16px;font-weight:800;margin-top:2px;">${s.sacs.jdOtor || "--"} / ${s.sacs.jdSol || "--"} <span style="font-size:11px;color:#9C7A2E;font-weight:normal;">JD Solicitadas</span></div>
 </td>` : ""}
 </tr></table>
 </td></tr>`;
@@ -1226,9 +1264,9 @@ ${rows}
 <div style="color:#8A97A3;font-size:11px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Cabezas operadas</div>
 <div style="color:#152C42;font-size:42px;font-weight:800;line-height:1.1;margin-top:3px;">${s.hero.operadas || "--"}</div>
 <table cellpadding="0" cellspacing="0" style="margin-top:8px;"><tr>
-${varTagInline(s.hero.varAnio, s.hero.varAnioSigno)}
+${varTagInline(s.hero.varAnio, s.hero.varAnioSigno, vsLabel)}
 <td style="width:6px;"></td>
-${varTagInline(s.hero.varTarget, s.hero.varTargetSigno)}
+${varTagInline(s.hero.varTarget, s.hero.varTargetSigno, "vs target")}
 </tr></table>
 </td>
 <td style="width:2%;"></td>
@@ -1262,6 +1300,7 @@ ${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;
 <td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">OFRECIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">CCC %</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">RENDIM %</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
 </tr>
@@ -1616,6 +1655,7 @@ function restoreState(state) {
     setv(`${u.key}_ofrecidas`, un.sinActividad ? "" : (un.ofrecidas === "--" ? "" : un.ofrecidas));
     setv(`${u.key}_ofVar`, un.ofVar);
     setv(`${u.key}_ccc`, un.sinActividad ? "" : (un.ccc === "--" ? "" : un.ccc));
+    setv(`${u.key}_rendim`, un.sinActividad ? "" : (un.rendim === "--" ? "" : un.rendim));
     setv(`${u.key}_vendidas`, un.sinActividad ? "" : un.vendidas);
     setv(`${u.key}_compradas`, un.sinActividad ? "" : (un.compradas === "--" ? "" : un.compradas));
   });
