@@ -1141,18 +1141,18 @@ function buildEmailHtml(s) {
       (u.ofrecidas !== "--" ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "") +
       `</td>` +
       `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.rendim === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.rendim + "%"}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.compradas}</td></tr>`;
+      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.compradas}</td>` +
+      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.rendim === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.rendim + "%"}</td></tr>`;
   }).join("");
 
   const totalRow = `<tr><td style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">Total ${isOficina ? "oficina" : tituloHeader}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:16px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
     `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td>` +
     `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td></tr>`;
+    `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td>` +
+    `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td></tr>`;
 
   // ---- cards: sociedades / nuevas / sacs ----
   const cardsWidth = s.sacsEnabled ? "31.3%" : "48.5%";
@@ -1300,9 +1300,9 @@ ${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;
 <td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">OFRECIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">CCC %</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">RENDIM %</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">RENDIM %</td>
 </tr>
 ${unidadRows}
 ${totalRow}
