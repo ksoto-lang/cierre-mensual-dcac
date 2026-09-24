@@ -209,8 +209,8 @@ function renderAsociadoRow(data) {
   row.className = "assoc-row";
   row.innerHTML = `
     <input type="text" placeholder="Nombre" class="a_nombre" value="${escapeAttr(data.nombre || "")}">
-    <input type="text" placeholder="Ofrecidas" class="a_ofrecidas" value="${escapeAttr(data.ofrecidas || "")}">
     <input type="text" placeholder="Operadas" class="a_operadas" value="${escapeAttr(data.operadas || "")}">
+    <input type="text" placeholder="Ofrecidas" class="a_ofrecidas" value="${escapeAttr(data.ofrecidas || "")}">
     <input type="text" placeholder="Vendidas" class="a_vendidas" value="${escapeAttr(data.vendidas || "")}">
     <input type="text" placeholder="Compradas" class="a_compradas" value="${escapeAttr(data.compradas || "")}">
     <input type="text" placeholder="% CCC" class="a_ccc" value="${escapeAttr(data.ccc || "")}">
@@ -1261,14 +1261,14 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
       const targetVarLine = a.targetVar ? `<div style="font-size:10px;margin-top:1px;">${varSmall(a.targetVar, a.targetSign)} <span style="color:#9AA7B2;">vs target</span></div>` : "";
       const socVarLine = a.socVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
       return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
-<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
-<div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
-${ofrVarLine}
-</td>
 <td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
 ${opVarLine}
 ${targetVarLine}
+</td>
+<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
+<div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
+${ofrVarLine}
 </td>
 <td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.vendidas || "--"}</td>
 <td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.compradas || "--"}</td>
@@ -1284,8 +1284,8 @@ ${socVarLine}
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
 <tr style="background-color:#F7F9FA;">
 <td style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">ASOCIADO</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;background-color:#F5F9FD;">OFRECIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;background-color:#F5F9FD;">OFRECIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">% CCC</td>
