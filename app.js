@@ -211,8 +211,11 @@ function renderAsociadoRow(data) {
     <input type="text" placeholder="Nombre" class="a_nombre" value="${escapeAttr(data.nombre || "")}">
     <input type="text" placeholder="Ofrecidas" class="a_ofrecidas" value="${escapeAttr(data.ofrecidas || "")}">
     <input type="text" placeholder="Operadas" class="a_operadas" value="${escapeAttr(data.operadas || "")}">
+    <input type="text" placeholder="Vendidas" class="a_vendidas" value="${escapeAttr(data.vendidas || "")}">
+    <input type="text" placeholder="Compradas" class="a_compradas" value="${escapeAttr(data.compradas || "")}">
     <input type="text" placeholder="% CCC" class="a_ccc" value="${escapeAttr(data.ccc || "")}">
     <input type="text" placeholder="Soc." class="a_soc" value="${escapeAttr(data.soc || "")}">
+    <input type="checkbox" class="a_residuo" title="Calcular como Total de la oficina − suma de los demás asociados" ${data.residuo ? "checked" : ""}>
     <button class="btn-danger" type="button" title="Quitar">✕</button>
   `;
   // variaciones (las trae el auto-completado desde el PDF; en carga manual quedan vacías)
@@ -224,6 +227,14 @@ function renderAsociadoRow(data) {
   row.dataset.targetSign = data.targetSign || "neg";
   row.dataset.socVar = data.socVar || "";
   row.dataset.socSign = data.socSign || "pos";
+  const residuoChk = row.querySelector(".a_residuo");
+  const toggleResiduoFields = () => {
+    ["a_ofrecidas", "a_operadas", "a_vendidas", "a_compradas", "a_ccc", "a_soc"].forEach((cls) => {
+      row.querySelector("." + cls).disabled = residuoChk.checked;
+    });
+  };
+  residuoChk.addEventListener("change", toggleResiduoFields);
+  toggleResiduoFields();
   row.querySelector("button").addEventListener("click", () => row.remove());
   wrap.appendChild(row);
 }
@@ -539,6 +550,8 @@ function parseResultadoComercialOficina(text) {
         operadasDelta: g["Cab. Operadas"] ? g["Cab. Operadas"].delta : "",
         targetDelta: g["Target"] ? g["Target"].delta : "",
         ccc: g["%CCC"] ? cleanNum(g["%CCC"].value) : "",
+        vendidas: g["Cab. Vendidas"] ? g["Cab. Vendidas"].value : "",
+        compradas: g["Cab. Compradas"] ? g["Cab. Compradas"].value : "",
         soc: g["Soc. Operando"] ? g["Soc. Operando"].value : "",
         socDelta: g["Soc. Operando"] ? g["Soc. Operando"].delta : "",
       });
@@ -780,15 +793,17 @@ function autofillFromPages(pages) {
     filled.push("nombre/tipo/mes/año");
   }
 
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = null, sacsJdSolSum = null;
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = [], sacsJdSolSum = null;
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
     const title = p.text.slice(0, 120);
-    if (/[-–—]\s?Resultado Comercial\b/.test(title) && !resultado && !asociadosOficina) {
+    if (/[-–—]\s?Resultado Comercial\b/.test(title) && !resultado) {
       if (/Cab\.\s*Ofrecidas/.test(p.text)) {
-        asociadosOficina = parseResultadoComercialOficina(p.text);
-      } else {
+        // el PDF a veces pagina los asociados en varias diapositivas con el mismo
+        // título ("Resultado Comercial") — hay que juntarlos todos, no solo la primera.
+        asociadosOficina = asociadosOficina.concat(parseResultadoComercialOficina(p.text));
+      } else if (!asociadosOficina.length) {
         resultado = parseResultadoComercial(p.text);
       }
     }
@@ -927,16 +942,25 @@ function autofillFromPages(pages) {
 
   // ---- resultado comercial por asociado (solo oficinas) ----
   if (asociadosOficina && asociadosOficina.length) {
+    // dedup por si el mismo asociado quedó repetido entre dos páginas paginadas
+    const seen = new Set();
+    const asociadosUnicos = asociadosOficina.filter((a) => {
+      const key = normalizeSocietyKey(a.nombre);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     document.getElementById("asociadosWrap").innerHTML = "";
-    asociadosOficina.forEach((a) => renderAsociadoRow({
+    asociadosUnicos.forEach((a) => renderAsociadoRow({
       nombre: a.nombre,
       ofrecidas: cleanNum(a.ofrecidas), ofrecidasVar: valOf(a.ofrecidasDelta), ofrecidasSign: signOf(a.ofrecidasDelta),
       operadas: cleanNum(a.operadas), operadasVar: valOf(a.operadasDelta), operadasSign: signOf(a.operadasDelta),
+      vendidas: cleanNum(a.vendidas), compradas: cleanNum(a.compradas),
       targetVar: valOf(a.targetDelta), targetSign: signOf(a.targetDelta),
       ccc: a.ccc,
       soc: a.soc, socVar: valOf(a.socDelta), socSign: signOf(a.socDelta),
     }));
-    filled.push(`Resultado comercial por asociado (${asociadosOficina.length})`);
+    filled.push(`Resultado comercial por asociado (${asociadosUnicos.length})`);
   }
 
   // JD Solicitadas: si no vino un total directo de la tarjeta resumen, usamos la suma
@@ -1037,12 +1061,15 @@ function readState() {
     operadas: row.querySelector(".a_operadas").value.trim(),
     operadasVar: row.dataset.operadasVar || "",
     operadasSign: row.dataset.operadasSign || "pos",
+    vendidas: row.querySelector(".a_vendidas").value.trim(),
+    compradas: row.querySelector(".a_compradas").value.trim(),
     targetVar: row.dataset.targetVar || "",
     targetSign: row.dataset.targetSign || "neg",
     ccc: row.querySelector(".a_ccc").value.trim(),
     soc: row.querySelector(".a_soc").value.trim(),
     socVar: row.dataset.socVar || "",
     socSign: row.dataset.socSign || "pos",
+    residuo: row.querySelector(".a_residuo").checked,
   })).filter((a) => a.nombre);
 
   return {
@@ -1195,10 +1222,39 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
   // ---- resultado comercial por asociado (solo oficina) ----
   let asociadosBlock = "";
   if (isOficina && s.asociados.length) {
-    const rows = s.asociados.map((a, idx) => {
+    // Fila(s) marcadas "Total − resto": se calculan como el total de la oficina
+    // menos la suma de todos los DEMÁS asociados, en vez de usar el dato que trae
+    // el PDF para esa persona (caso: alguien que funciona como oficina, con
+    // representantes propios a cargo — ej. Alan García).
+    const parseNum = (v) => {
+      if (v === undefined || v === null || v === "" || v === "--") return 0;
+      return parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
+    };
+    const fmtNum = (n) => Math.round(n).toLocaleString("es-AR");
+    const asociadosFinal = s.asociados.some((a) => a.residuo)
+      ? s.asociados.map((a, i) => {
+          if (!a.residuo) return a;
+          const others = s.asociados.filter((_, j) => j !== i);
+          const sumOfr = others.reduce((acc, o) => acc + parseNum(o.ofrecidas), 0);
+          const sumOp = others.reduce((acc, o) => acc + parseNum(o.operadas), 0);
+          const sumVen = others.reduce((acc, o) => acc + parseNum(o.vendidas), 0);
+          const sumComp = others.reduce((acc, o) => acc + parseNum(o.compradas), 0);
+          const sumSoc = others.reduce((acc, o) => acc + parseNum(o.soc), 0);
+          const resOfr = Math.max(0, parseNum(s.hero.ofrecidas) - sumOfr);
+          const resOp = Math.max(0, parseNum(s.hero.operadas) - sumOp);
+          const resVen = Math.max(0, totalVendidas - sumVen);
+          const resComp = Math.max(0, totalCompradas - sumComp);
+          const resSoc = Math.max(0, parseNum(s.sociedades.mes) - sumSoc);
+          const resCcc = resOfr > 0 ? String(Math.round((resOp / resOfr) * 100)) : "";
+          // no calculamos variación (vs período anterior / vs target) para una fila derivada
+          return { ...a, ofrecidas: fmtNum(resOfr), operadas: fmtNum(resOp), vendidas: fmtNum(resVen), compradas: fmtNum(resComp), soc: fmtNum(resSoc), ccc: resCcc,
+            ofrecidasVar: "", operadasVar: "", targetVar: "", socVar: "" };
+        })
+      : s.asociados;
+    const rows = asociadosFinal.map((a, idx) => {
       const alt = idx % 2 === 1;
       const cc = cccColor(a.ccc);
-      const bb = idx < s.asociados.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
+      const bb = idx < asociadosFinal.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
       const altBg = alt ? "background-color:#FAFBFC;" : "";
       const ofrVarLine = a.ofrecidasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
       const opVarLine = a.operadasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
@@ -1214,6 +1270,8 @@ ${ofrVarLine}
 ${opVarLine}
 ${targetVarLine}
 </td>
+<td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.vendidas || "--"}</td>
+<td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.compradas || "--"}</td>
 <td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
 <td align="center" style="padding:12px 10px;${bb}">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.soc || "--"}</div>
@@ -1228,6 +1286,8 @@ ${socVarLine}
 <td style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">ASOCIADO</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;background-color:#F5F9FD;">OFRECIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">% CCC</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">SOC.</td>
 </tr>
