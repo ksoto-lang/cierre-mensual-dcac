@@ -129,15 +129,16 @@ button{
 
 .assoc-row{
   display:grid;
-  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr auto;
+  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr auto auto;
   gap:6px;
   align-items:center;
   margin-bottom:6px;
 }
 .assoc-row input{padding:6px 8px;font-size:12px;}
+.assoc-row .a_residuo{width:16px;height:16px;}
 .assoc-header{
   display:grid;
-  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr auto;
+  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr 1fr auto auto;
   gap:6px;
   font-size:10px;
   color:var(--gray);
