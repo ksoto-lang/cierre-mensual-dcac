@@ -23,6 +23,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("btnAddAsociado").addEventListener("click", () => renderAsociadoRow());
   document.getElementById("btnAddRecuadro").addEventListener("click", () => addRecuadroCard());
+  document.getElementById("btnAddCisRecuadro").addEventListener("click", () => {
+    const linkCis = document.getElementById("linkCis").value.trim();
+    addRecuadroCard({ ...CIS_RECUADRO_PRESET, link: linkCis });
+  });
   document.getElementById("btnReadDrive").addEventListener("click", readFromDriveLink);
   document.getElementById("filePdf").addEventListener("change", (e) => {
     if (e.target.files[0]) readPdfFile(e.target.files[0]);
@@ -209,11 +213,11 @@ function renderAsociadoRow(data) {
   row.className = "assoc-row";
   row.innerHTML = `
     <input type="text" placeholder="Nombre" class="a_nombre" value="${escapeAttr(data.nombre || "")}">
-    <input type="text" placeholder="Operadas" class="a_operadas" value="${escapeAttr(data.operadas || "")}">
     <input type="text" placeholder="Ofrecidas" class="a_ofrecidas" value="${escapeAttr(data.ofrecidas || "")}">
+    <input type="text" placeholder="Operadas" class="a_operadas" value="${escapeAttr(data.operadas || "")}">
+    <input type="text" placeholder="% CCC" class="a_ccc" value="${escapeAttr(data.ccc || "")}">
     <input type="text" placeholder="Vendidas" class="a_vendidas" value="${escapeAttr(data.vendidas || "")}">
     <input type="text" placeholder="Compradas" class="a_compradas" value="${escapeAttr(data.compradas || "")}">
-    <input type="text" placeholder="% CCC" class="a_ccc" value="${escapeAttr(data.ccc || "")}">
     <input type="text" placeholder="Soc." class="a_soc" value="${escapeAttr(data.soc || "")}">
     <input type="checkbox" class="a_residuo" title="Calcular como Total de la oficina − suma de los demás asociados" ${data.residuo ? "checked" : ""}>
     <button class="btn-danger" type="button" title="Quitar">✕</button>
@@ -256,6 +260,14 @@ const DEFAULT_RECUADROS = [
   { titulo: "Resumen del mes", icono: "★", color: "dark", link: "", linkTexto: "",
     contenido: "" },
 ];
+
+// Recuadro de "CIs habilitadas": ya no viene por defecto en cada cierre (ahora las
+// sociedades se linkean solas via el directorio de CUITs), pero sigue disponible
+// para sumarlo con un clic cuando haga falta.
+const CIS_RECUADRO_PRESET = {
+  titulo: "CIs habilitadas", icono: "✅", color: "blue", link: "", linkTexto: "⬇️  Listado de Socs con CI habilitadas",
+  contenido: "Corroborar que las sociedades con CIs habilitadas tengan una buena interacción con las mismas. Y además, revisar aquellas que habría que desactivar del listado de abajo.",
+};
 
 function renderRecuadros(list) {
   const wrap = document.getElementById("recuadrosWrap");
@@ -840,7 +852,10 @@ function autofillFromPages(pages) {
 
     // tabla de detalle de SACs (una fila por sociedad, con "JD Pedidas") -> se usa para
     // sacar el total real de JD solicitadas, que la tarjeta resumen nunca trae.
-    if (sacsJdSolSum === null) {
+    // OJO: solo se busca en páginas que ya sabemos que son de SACs (por título) — si se
+    // buscara en todas las páginas, cualquier otra tabla del PDF que por casualidad tenga
+    // "número + FAE/INV/CRIA/MAG + fecha" generaría un total falso.
+    if (sacsJdSolSum === null && /sacs/i.test(title)) {
       const sum = sumJdPedidasFromDetailTable(p.text);
       if (sum) sacsJdSolSum = sum;
     }
@@ -964,9 +979,9 @@ function autofillFromPages(pages) {
   }
 
   // JD Solicitadas: si no vino un total directo de la tarjeta resumen, usamos la suma
-  // de la tabla de detalle. Nunca dejamos que quede en 0 por defecto si no lo sabemos
-  // (0 sería incorrecto si hay JD Otorgadas > 0 — no se puede otorgar más de lo pedido).
-  if (!document.getElementById("jd_sol").value && sacsJdSolSum) {
+  // de la tabla de detalle — pero solo si realmente hay diapositiva de SACs en este PDF
+  // (si no hay ninguna, la tarjeta de SACs queda deshabilitada y no se muestra nada).
+  if (document.getElementById("sacsEnabled").checked && !document.getElementById("jd_sol").value && sacsJdSolSum) {
     setVal("jd_sol", sacsJdSolSum);
     filled.push("JD Solicitadas (sumado de la tabla de detalle)");
   }
@@ -1254,44 +1269,62 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
     const rows = asociadosFinal.map((a, idx) => {
       const alt = idx % 2 === 1;
       const cc = cccColor(a.ccc);
-      const bb = idx < asociadosFinal.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
+      const bb = "border-bottom:1px solid #EDEFF2;";
       const altBg = alt ? "background-color:#FAFBFC;" : "";
       const ofrVarLine = a.ofrecidasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
       const opVarLine = a.operadasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
       const targetVarLine = a.targetVar ? `<div style="font-size:10px;margin-top:1px;">${varSmall(a.targetVar, a.targetSign)} <span style="color:#9AA7B2;">vs target</span></div>` : "";
       const socVarLine = a.socVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
       return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
+<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
+<div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
+${ofrVarLine}
+</td>
 <td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
 ${opVarLine}
 ${targetVarLine}
 </td>
-<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
-<div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
-${ofrVarLine}
-</td>
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
 <td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.vendidas || "--"}</td>
 <td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.compradas || "--"}</td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
 <td align="center" style="padding:12px 10px;${bb}">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.soc || "--"}</div>
 ${socVarLine}
 </td></tr>`;
     }).join("");
 
+    // ---- fila de Total: suma cada columna numérica de los asociados mostrados ----
+    const sumOfrecidas = asociadosFinal.reduce((acc, a) => acc + parseNum(a.ofrecidas), 0);
+    const sumOperadas = asociadosFinal.reduce((acc, a) => acc + parseNum(a.operadas), 0);
+    const sumVendidasAsoc = asociadosFinal.reduce((acc, a) => acc + parseNum(a.vendidas), 0);
+    const sumCompradasAsoc = asociadosFinal.reduce((acc, a) => acc + parseNum(a.compradas), 0);
+    const sumSocAsoc = asociadosFinal.reduce((acc, a) => acc + parseNum(a.soc), 0);
+    const sumCccAsoc = sumOfrecidas > 0 ? Math.round((sumOperadas / sumOfrecidas) * 100) : null;
+    const totalRow = `<tr style="background-color:#152C42;">
+<td style="padding:12px 10px;font-size:13px;font-weight:800;color:#ffffff;">TOTAL</td>
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumOfrecidas)}</td>
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumOperadas)}</td>
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${sumCccAsoc !== null ? sumCccAsoc + "%" : "--"}</td>
+<td align="center" style="padding:12px 10px;font-size:14px;font-weight:800;color:#ffffff;">${fmtNum(sumVendidasAsoc)}</td>
+<td align="center" style="padding:12px 10px;font-size:14px;font-weight:800;color:#ffffff;">${fmtNum(sumCompradasAsoc)}</td>
+<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumSocAsoc)}</td>
+</tr>`;
+
     asociadosBlock = `<tr><td style="padding:20px 28px 4px 28px;">
 <div style="color:#152C42;font-size:14px;font-weight:800;margin-bottom:12px;">Resultado comercial por asociado</div>
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
 <tr style="background-color:#F7F9FA;">
 <td style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">ASOCIADO</td>
-<td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;background-color:#F5F9FD;">OFRECIDAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
+<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">% CCC</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">% CCC</td>
 <td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">SOC.</td>
 </tr>
 ${rows}
+${totalRow}
 </table>
 </td></tr>`;
   }
