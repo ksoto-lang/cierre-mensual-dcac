@@ -89,6 +89,14 @@
         </select>
         <div class="hint">Si es trimestral o cuatrimestral, las comparaciones del mail dicen "vs mismo período" en vez de "vs {mes} año anterior".</div>
 
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:10px;">
+          <input type="checkbox" id="omitVsUnidades" style="width:auto;margin:0;"> Omitir las variaciones vs año anterior (flecha, % y texto) en <b>Actividad por unidad de negocio</b>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:6px;">
+          <input type="checkbox" id="omitVsAsociados" style="width:auto;margin:0;"> Omitir las variaciones vs año anterior (flecha, % y texto) en <b>Resultado comercial por asociado</b>
+        </label>
+        <div class="hint">Solo afecta a esas dos tablas. El "vs target" de los asociados, el hero y la tarjeta de Sociedades no cambian.</div>
+
         <label>Link de Drive — presentación (PDF)</label>
         <input type="url" id="linkPdf" placeholder="https://drive.google.com/file/d/.../view">
         <div class="hint">Se usa tanto para leer el PDF como para el botón final "Ver reporte completo" del mail.</div>

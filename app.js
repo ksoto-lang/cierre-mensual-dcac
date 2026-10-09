@@ -1092,6 +1092,8 @@ function readState() {
     nombre: g("nombre"),
     mes: document.getElementById("mes").value,
     periodicidad: document.getElementById("periodicidad").value,
+    omitVsUnidades: document.getElementById("omitVsUnidades").checked,
+    omitVsAsociados: document.getElementById("omitVsAsociados").checked,
     anio: g("anio"),
     linkPdf: g("linkPdf"),
     linkCis: g("linkCis"),
@@ -1148,6 +1150,9 @@ function buildEmailHtml(s) {
     ? `vs mismo período ${anioAnt2}'`
     : `vs ${s.mes.slice(0, 3)} ${anioAnt2}`;
   const vsYtdLabel = `Vs YTD ${anioAnt2}'`;
+  // Opción: omitir por completo la variación vs año anterior (flecha, % y texto) en cada tabla.
+  const vsSpanUnidades = ` <span style="color:#9AA7B2;">${vsLabel}</span>`;
+  const vsSpanAsoc = ` <span style="color:#9AA7B2;">${vsLabel}</span>`;
 
   // Imagen de fondo del header: la que subió el usuario, o la de fábrica (foto de vacas).
   const headerImgData = (s.headerImage && s.headerImage.data) ? s.headerImage.data : A.headerBg;
@@ -1175,12 +1180,12 @@ function buildEmailHtml(s) {
     return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
       `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
-      `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` +
+      (s.omitVsUnidades ? "" : `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
       `<table cellpadding="0" cellspacing="0" style="margin:5px 0 0 0;"><tr><td style="width:60px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
       `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}">` +
       `<div style="font-size:14px;color:#33424F;">${u.ofrecidas}</div>` +
-      (u.ofrecidas !== "--" ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "") +
+      (u.ofrecidas !== "--" && !s.omitVsUnidades ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)}${vsSpanUnidades}</div>` : "") +
       `</td>` +
       `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
@@ -1271,10 +1276,10 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
       const cc = cccColor(a.ccc);
       const bb = "border-bottom:1px solid #EDEFF2;";
       const altBg = alt ? "background-color:#FAFBFC;" : "";
-      const ofrVarLine = a.ofrecidasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
-      const opVarLine = a.operadasVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
+      const ofrVarLine = a.ofrecidasVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)}${vsSpanAsoc}</div>` : "";
+      const opVarLine = a.operadasVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)}${vsSpanAsoc}</div>` : "";
       const targetVarLine = a.targetVar ? `<div style="font-size:10px;margin-top:1px;">${varSmall(a.targetVar, a.targetSign)} <span style="color:#9AA7B2;">vs target</span></div>` : "";
-      const socVarLine = a.socVar ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")} <span style="color:#9AA7B2;">${vsLabel}</span></div>` : "";
+      const socVarLine = a.socVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")}${vsSpanAsoc}</div>` : "";
       return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
 <td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
@@ -1725,6 +1730,8 @@ function restoreState(state) {
   setv("nombre", state.nombre);
   setv("mes", state.mes);
   setv("periodicidad", state.periodicidad || "mensual");
+  document.getElementById("omitVsUnidades").checked = !!state.omitVsUnidades;
+  document.getElementById("omitVsAsociados").checked = !!state.omitVsAsociados;
   setv("anio", state.anio);
   setv("linkPdf", state.linkPdf);
   setv("linkCis", state.linkCis);
