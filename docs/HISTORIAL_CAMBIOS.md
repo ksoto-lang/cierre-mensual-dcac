@@ -29,6 +29,10 @@ y este archivo se actualiza en el mismo commit.
 21. Se suben al repo `CLAUDE.md`, `docs/`, el test de regresión y `package.json` (antes vivían fuera de GitHub).
 22. Tarjeta **"Gestión de cuentas" (CRM)** con Cuentas Autogeneradas, Cuentas Enviadas y Silencio Comercial (mes + histórico), leída de la hoja nueva de CRM del Power BI.
     Solo aparece si el PDF trae esa hoja; casilla para quitarla. Test de regresión ampliado. Fixtures nuevos: Oficina Tandil y Oficina Bs As Central (sep 2026).
+23. Fix: **JD Solicitadas** sumaba el número equivocado cuando la fila de la tabla de detalle de SACs tenía CIs (Tandil sep 26: 1357 → 17, confirmado por Karli).
+    Ahora toma siempre el primer número después del Estado (= JD Pedidas).
+24. Fix: **%CCC por asociado** exportado como fracción por un error del Power BI ("0,79" → 79%, confirmado por Karli). Solo se convierte "0,xx"/"1,xx" sin signo %.
+    El test ahora verifica valores esperados por PDF (JD Solicitadas de Tandil, %CCC de Bs As Central) y que ningún %CCC por asociado quede como fracción o > 100.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

@@ -23,9 +23,7 @@ Preguntas para Karli: ¿en qué hoja del PDF aparece (si es que sale de ahí)? �
 - Fila TOTAL: en un momento se pidió que cada total se contrastara contra el total de "Actividad por unidad de negocio" y marcara "?" si no coincide. La versión entregada **no** tiene ese chequeo
   (el pedido posterior fue solo sumar). Preguntar si lo quiere; ojo: depende de resolver el punto 1 para el %CCC.
 
-## 4b. Errores de lectura detectados con los PDFs de sep 2026 (sin arreglar)
-- **%CCC por asociado**: el PDF nuevo trae "0,79" (fracción) en vez de "79%" → el mail muestra "0,79%". Caso: Oficina Bs As Central.
-- **JD Solicitadas** (suma de la tabla de detalle de SACs): con celdas vacías se corren las columnas y se cuela el "1350" de CIs Vistas → 1357 en vez de 17. Caso: Oficina Tandil.
+## 4b. Datos nuevos detectados con los PDFs de sep 2026
 - "Resultado Comercial" de oficina ahora trae por asociado Rendim., Cab. Operadas YTD, Soc. Operando YTD y variaciones en p.p. de %CCC/Rendim. Preguntar a Karli cuáles van a la tabla.
 - En la hoja de CRM la leyenda del gráfico dice "Cuentas Autogestionadas" y las tarjetas "Cuentas Autogeneradas": avisar para unificar en el Power BI.
 

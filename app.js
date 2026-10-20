@@ -542,6 +542,18 @@ function reconstructRotatedName(chunk) {
 // "{Nombre} - Resultado Comercial" de OFICINA: una tarjeta por asociado, con las
 // etiquetas pegadas a cada valor (formato "Cab. Ofrecidas 289 -- Cab. Operadas 289 -- ...").
 // Distinto del individual (una sola línea densa de números), que maneja parseResultadoComercial.
+// El Power BI a veces exporta el %CCC por asociado como fracción ("0,79", sin "%") en vez de
+// porcentaje ("79%"): error de formato del reporte confirmado por Karli (sep 26: 0,79 = 79%).
+// Solo se convierte el caso inequívoco "0,xx" / "1,xx" sin signo %; cualquier otro valor queda igual.
+function cccFraccionAPorcentaje(raw) {
+  const s = String(raw || "").trim();
+  if (/^[01],\d+$/.test(s)) {
+    const pct = Math.round(parseFloat(s.replace(",", ".")) * 1000) / 10;
+    return String(pct).replace(".", ",");
+  }
+  return cleanNum(s);
+}
+
 function parseResultadoComercialOficina(text) {
   const titleM = text.match(/[-–—]\s?Resultado Comercial\b/);
   let pos = titleM ? titleM.index + titleM[0].length : 0;
@@ -564,7 +576,7 @@ function parseResultadoComercialOficina(text) {
         operadas: g["Cab. Operadas"] ? g["Cab. Operadas"].value : "",
         operadasDelta: g["Cab. Operadas"] ? g["Cab. Operadas"].delta : "",
         targetDelta: g["Target"] ? g["Target"].delta : "",
-        ccc: g["%CCC"] ? cleanNum(g["%CCC"].value) : "",
+        ccc: g["%CCC"] ? cccFraccionAPorcentaje(g["%CCC"].value) : "",
         vendidas: g["Cab. Vendidas"] ? g["Cab. Vendidas"].value : "",
         compradas: g["Cab. Compradas"] ? g["Cab. Compradas"].value : "",
         soc: g["Soc. Operando"] ? g["Soc. Operando"].value : "",

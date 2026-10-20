@@ -89,6 +89,22 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       problems.push("aparece la tarjeta de Gestión de cuentas pero el PDF no tiene hoja de CRM");
     }
 
+    // Regresión 5: %CCC por asociado nunca como fracción ("0,79" debe quedar 79) ni mayor a 100
+    state.asociados.forEach((a, i) => {
+      const v = parseFloat(String(a.ccc || "").replace(",", "."));
+      if (/^[01],\d+$/.test(a.ccc || "") || v > 100) problems.push(`%CCC del asociado #${i + 1} con formato raro: "${a.ccc}"`);
+    });
+
+    // Regresión 6: valores confirmados por Karli en PDFs puntuales (por parte del nombre del archivo)
+    const ESPERADOS = [
+      { archivo: /tandil/i, campo: "JD Solicitadas", valor: (s) => s.sacs.jdSol, esperado: "17" },
+      { archivo: /bs as central/i, campo: "%CCC asociado #1", valor: (s) => (s.asociados[0] || {}).ccc, esperado: "79" },
+    ];
+    ESPERADOS.filter((e) => e.archivo.test(f)).forEach((e) => {
+      const got = e.valor(state);
+      if (got !== e.esperado) problems.push(`${e.campo}: leyó "${got}", debería ser "${e.esperado}"`);
+    });
+
     const missing = (res && res.missing) || [];
     console.log(`${problems.length ? "FAIL" : "ok  "}  ${f}  [tipo=${state.tipo}, asociados=${state.asociados.length}, missing=${missing.length}]`);
     missing.forEach((m) => console.log("        missing: " + m));
