@@ -782,8 +782,12 @@ function parseCrmPage(text) {
 // "JD Pedidas" de todas las filas. La tarjeta resumen del PDF nunca trae un total de
 // "JD Solicitadas" (solo trae "JD Otorgadas"), así que el total real de pedidas hay
 // que sacarlo sumando la columna de la tabla — nunca asumir 0 cuando no se encuentra.
+// Fila: "Sociedad ESTADO JDPedidas [JDOtorgadas] [CIs Enviadas] [CIs Vistas] [CIs Compradas] UN Fecha".
+// Las celdas vacías no dejan texto, así que la cantidad de números varía: JD Pedidas es siempre
+// el PRIMER número después del Estado (APROBADO, INFO_SOL, ...). Antes se tomaba el número
+// pegado a la UN y en filas con CIs se colaba "CIs Enviadas" (caso Tandil sep 26: 1357 en vez de 17).
 function sumJdPedidasFromDetailTable(text) {
-  const re = /(\d+)(?:\s+\d+)?\s+(?:INV|FAE|CRIA|MAG)\s+\d{1,2}\/\d{1,2}\/\d{2,4}/g;
+  const re = /\b[A-Z][A-Z_]{3,}\s+(\d+)(?:\s+\d+){0,4}\s+(?:INV|FAE|CRIA|MAG)\s+\d{1,2}\/\d{1,2}\/\d{2,4}/g;
   let m, sum = 0, count = 0;
   while ((m = re.exec(text)) !== null) {
     sum += parseInt(m[1], 10) || 0;
