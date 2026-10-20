@@ -1,0 +1,35 @@
+# Historial de cambios (resumen del chat de desarrollo)
+
+Orden cronológico aproximado. Hasta la entrega `2026-10-09c` no había control de versiones (Karli copiaba archivos a GitHub a mano); desde que se use Claude Code, cada cambio aprobado = un commit
+y este archivo se actualiza en el mismo commit.
+
+## Base y construcción de la webapp
+1. Corrección de un cierre manual (Jose Olmedo) con PDF actualizado, respetando literalmente los comentarios de Karli.
+2. Comentarios de Producción detallados (SACs pendientes, Mermas, Variación de ofrecimientos, No concretadas) literales; Mermas en caja propia; caja "CIs habilitadas" con link al listado.
+3. Webapp estática (GitHub Pages): carga del PDF, autocompletado, cajas de comentario, generación del HTML.
+4. Autocompletado robusto contra PDFs reales de distintas oficinas: formatos agrupado/interlineado, guion largo, "Cria" sin tilde, MAG con menos campos, signo de deltas, SACs (enviados/aprobados/JD).
+5. Recuadros dinámicos (cantidad y títulos libres) en lugar de 4 fijos.
+6. Directorio sociedad→CUIT (desde la hoja "Comportamiento CIs") con autolink a Vademécum; alta manual; localStorage.
+7. Borradores + autoguardado. Un solo campo de link de Drive (sirve para leer y para el botón final).
+8. Header: 3 iteraciones hasta la versión segura para Gmail (img + bloque en flujo normal); imagen propia y "guardar como la de siempre".
+9. Hubo confusión de deploy (zip; un archivo equivocado pegado en `index.html`): desde entonces se entregan archivos sueltos indicando cuáles cambiaron.
+
+## Cambios recientes (sept–oct 2026)
+10. Columna **Rendimiento** en "Actividad por unidad de negocio" (luego movida a la última posición).
+11. Etiquetas "vs target" / "vs {mes} {año-1}" junto a las variaciones del hero; tarjeta Sociedades: "Vs YTD 25'".
+12. Fix: los **representantes** no muestran el recuadro de Rendimiento (solo %CCC a ancho completo).
+13. Fix: oficinas tomaban máximo 3 asociados → ahora concatena todas las hojas "Resultado Comercial" y deduplica.
+14. **"Total−resto"** para quien funciona como oficina (Alan García): sus valores = total oficina − suma de los demás (casilla por fila).
+15. Columnas **Vendidas y Compradas** en la tabla de asociados (Soc. última).
+16. Recuadro **"CIs habilitadas"** de nuevo, pero **opcional** (botón propio).
+17. Fix crítico: sin hoja de SACs, "JD Solicitadas" salía "1" (regex global). Ahora solo se busca en páginas de SACs y solo se aplica si la tarjeta de SACs está activa. *(Falta confirmación de Karli con el PDF original; ver PENDIENTES.)*
+18. Fila **TOTAL** al final de "Resultado comercial por asociado" (entrega 05/10). Orden de columnas probado en las dos direcciones; vigente desde el 09/10: Operadas · Ofrecidas · %CCC · Vendidas · Compradas · Soc.
+19. Casillas para **omitir variaciones vs año anterior** (flecha, % y texto) en "Actividad por unidad de negocio" y/o "Resultado comercial por asociado" (entrega 09/10 "c"; la versión "b" ocultaba solo el texto "vs …" y Karli pidió ocultar todo).
+20. Armado del paquete de traspaso a Claude Code: `CLAUDE.md`, docs, test de regresión (`tests/regression.js`), `.claude/settings.json`.
+
+## Análisis sin cambio de código
+- Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
+- "Tropas operadas": no existe en ninguno de los 4 PDFs de referencia (ver PENDIENTES #3).
+
+## Entregas (carpetas de salida de las sesiones previas)
+`entrega_2026-10-05` (columnas + TOTAL) → `entrega_2026-10-09` (Operadas primero) → `entrega_2026-10-09b` (omitir texto "vs") → `entrega_2026-10-09c` (omitir variación completa). La última es la base de este repo.

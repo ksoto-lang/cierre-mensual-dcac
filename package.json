@@ -1,0 +1,13 @@
+{
+  "name": "cierre-mensual-dcac",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generador de Cierre Mensual (dCaC) - webapp estática. package.json solo sirve para los tests de regresión; la webapp no tiene build.",
+  "scripts": {
+    "test": "node tests/regression.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "pdfjs-dist": "3.11.174"
+  }
+}
