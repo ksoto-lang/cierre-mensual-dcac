@@ -26,6 +26,9 @@ y este archivo se actualiza en el mismo commit.
 18. Fila **TOTAL** al final de "Resultado comercial por asociado" (entrega 05/10). Orden de columnas probado en las dos direcciones; vigente desde el 09/10: Operadas · Ofrecidas · %CCC · Vendidas · Compradas · Soc.
 19. Casillas para **omitir variaciones vs año anterior** (flecha, % y texto) en "Actividad por unidad de negocio" y/o "Resultado comercial por asociado" (entrega 09/10 "c"; la versión "b" ocultaba solo el texto "vs …" y Karli pidió ocultar todo).
 20. Armado del paquete de traspaso a Claude Code: `CLAUDE.md`, docs, test de regresión (`tests/regression.js`), `.claude/settings.json`.
+21. Se suben al repo `CLAUDE.md`, `docs/`, el test de regresión y `package.json` (antes vivían fuera de GitHub).
+22. Tarjeta **"Gestión de cuentas" (CRM)** con Cuentas Autogeneradas, Cuentas Enviadas y Silencio Comercial (mes + histórico), leída de la hoja nueva de CRM del Power BI.
+    Solo aparece si el PDF trae esa hoja; casilla para quitarla. Test de regresión ampliado. Fixtures nuevos: Oficina Tandil y Oficina Bs As Central (sep 2026).
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

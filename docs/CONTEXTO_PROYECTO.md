@@ -35,7 +35,7 @@ mismo trabajo (Claude arma el HTML a partir del PDF siguiendo una plantilla `dis
 Header (imagen + logo + "Cierre Mensual" + nombre + píldora de fecha) → Hero (Cabezas operadas + tags vs año anterior / vs target; recuadros
 Rendimiento y % CCC — **Rendimiento se oculta para representantes**) → Actividad por unidad de negocio (Categoría, **Operadas, Ofrecidas, CCC %,
 Vendidas, Compradas, Rendim.**; filas Cría/Faena/Invernada/MAG según existan + fila total) → tarjetas Sociedades Operando / Nuevas Sociedades / SACs (SACs solo si hay
-hoja de SACs) → **Resultado comercial por asociado** (solo oficinas; columnas **Asociado, Operadas, Ofrecidas, %CCC, Vendidas, Compradas, Soc.** + fila **TOTAL**) →
+hoja de SACs) → tarjeta **Gestión de cuentas** (CRM, solo si hay hoja de CRM) → **Resultado comercial por asociado** (solo oficinas; columnas **Asociado, Operadas, Ofrecidas, %CCC, Vendidas, Compradas, Soc.** + fila **TOTAL**) →
 recuadros dinámicos → footer (botón "Ver reporte completo", tarjetas Pulso Comercial y Vademécum).
 
 ## 5. Lecciones de los parsers del PDF (lo más delicado)

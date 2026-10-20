@@ -21,6 +21,9 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sacsEnabled").addEventListener("change", (e) => {
     document.getElementById("sacsFields").style.display = e.target.checked ? "block" : "none";
   });
+  document.getElementById("crmEnabled").addEventListener("change", (e) => {
+    document.getElementById("crmFields").style.display = e.target.checked ? "block" : "none";
+  });
   document.getElementById("btnAddAsociado").addEventListener("click", () => renderAsociadoRow());
   document.getElementById("btnAddRecuadro").addEventListener("click", () => addRecuadroCard());
   document.getElementById("btnAddCisRecuadro").addEventListener("click", () => {
@@ -750,6 +753,31 @@ function parseSacsPage(text) {
   };
 }
 
+// Hoja de CRM ("MES ACTUAL" / "HISTÓRICO" con Cuentas Autogeneradas, Cuentas Enviadas y
+// Silencio Comercial). Su título es solo el nombre de la oficina/AC, sin "- tema", así que
+// se reconoce por contenido (isCrmPage). Los valores se copian tal cual vienen ("0%", "2 (33%)").
+function isCrmPage(text) {
+  return /Cuentas\s+Autogeneradas/i.test(text) && /Silencio\s+Comercial/i.test(text);
+}
+function parseCrmPage(text) {
+  const idx = text.search(/HIST[ÓO]RICO/i);
+  const mes = idx >= 0 ? text.slice(0, idx) : text;
+  const hist = idx >= 0 ? text.slice(idx) : "";
+  const NUM = "(--|[\\d.,]+\\s*%?(?:\\s*\\(\\s*[\\d.,]+\\s*%\\s*\\))?)";
+  const pick = (t, label) => {
+    const m = t.match(new RegExp(label + "\\s+" + NUM, "i"));
+    return m && !isDash(m[1]) ? m[1].replace(/\s+/g, " ").replace(/\(\s+/, "(").replace(/\s+\)/, ")").trim() : "";
+  };
+  return {
+    auto: pick(mes, "Cuentas\\s+Autogeneradas"),
+    env: pick(mes, "Cuentas\\s+Enviadas"),
+    sil: pick(mes, "Silencio\\s+Comercial"),
+    autoH: pick(hist, "Cuentas\\s+Autogeneradas"),
+    envH: pick(hist, "Cuentas\\s+Enviadas"),
+    silH: pick(hist, "Silencio\\s+Comercial"),
+  };
+}
+
 // "{Nombre} - SACs Enviados" (tabla de DETALLE, una fila por sociedad) -> suma de
 // "JD Pedidas" de todas las filas. La tarjeta resumen del PDF nunca trae un total de
 // "JD Solicitadas" (solo trae "JD Otorgadas"), así que el total real de pedidas hay
@@ -805,7 +833,7 @@ function autofillFromPages(pages) {
     filled.push("nombre/tipo/mes/año");
   }
 
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = [], sacsJdSolSum = null;
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = [], sacsJdSolSum = null, crm = null;
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
@@ -859,7 +887,19 @@ function autofillFromPages(pages) {
       const sum = sumJdPedidasFromDetailTable(p.text);
       if (sum) sacsJdSolSum = sum;
     }
+
+    if (!crm && isCrmPage(p.text)) crm = parseCrmPage(p.text);
   });
+
+  // ---- Gestión de cuentas (CRM): la tarjeta se activa solo si el PDF trae esa hoja ----
+  ["crm_auto", "crm_env", "crm_sil", "crm_autoH", "crm_envH", "crm_silH"].forEach((id) => { document.getElementById(id).value = ""; });
+  document.getElementById("crmEnabled").checked = !!crm;
+  document.getElementById("crmFields").style.display = crm ? "block" : "none";
+  if (crm) {
+    setVal("crm_auto", crm.auto); setVal("crm_env", crm.env); setVal("crm_sil", crm.sil);
+    setVal("crm_autoH", crm.autoH); setVal("crm_envH", crm.envH); setVal("crm_silH", crm.silH);
+    filled.push("Gestión de cuentas (CRM)");
+  }
 
   // ---- hero + sociedades desde Resultado Comercial (o, si no está, desde Cabezas Operadas) ----
   if (resultado) {
@@ -1125,6 +1165,11 @@ function readState() {
     sacs: {
       env: g("sacs_env"), apr: g("sacs_apr"), jdSol: g("jd_sol"), jdOtor: g("jd_otor"),
     },
+    crmEnabled: document.getElementById("crmEnabled").checked,
+    crm: {
+      auto: g("crm_auto"), env: g("crm_env"), sil: g("crm_sil"),
+      autoH: g("crm_autoH"), envH: g("crm_envH"), silH: g("crm_silH"),
+    },
     asociados,
     recuadros: readRecuadros().map((r) => {
       if (!r.link && document.getElementById("linkCis").value.trim() && /\bci\b/i.test(r.titulo)) {
@@ -1238,6 +1283,35 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
 </td>` : ""}
 </tr></table>
 </td></tr>`;
+
+  // ---- gestión de cuentas (CRM): solo si la casilla está tildada ----
+  let crmBlock = "";
+  if (s.crmEnabled && s.crm) {
+    const c = s.crm;
+    // Silencio comercial = cuentas sin primer contacto: rojo si hay alguna, verde si es 0
+    const silColor = (v) => {
+      const m = String(v || "").match(/^[\d.,]+/);
+      if (!m) return "#152C42";
+      return parseFloat(m[0].replace(/\./g, "").replace(",", ".")) > 0 ? "#C0392B" : "#1E8449";
+    };
+    const col = (label, mes, hist, color, border) => `<td style="width:33.3%;vertical-align:top;${border ? "border-left:1px solid #D7E3F0;padding-left:12px;" : ""}">
+<div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">${label}</div>
+<div style="color:${color || "#152C42"};font-size:20px;font-weight:800;margin-top:2px;">${mes || "--"}</div>
+<div style="font-size:10px;color:#8A97A3;margin-top:1px;">Histórico: <span style="font-weight:bold;color:${hist && color ? silColor(hist) : "#33424F"};">${hist || "--"}</span></div>
+</td>`;
+    crmBlock = `<tr><td style="padding:14px 28px 4px 28px;">
+<table role="presentation" width="100%"><tr>
+<td style="background-color:#F5F9FD;border:1px solid #D7E3F0;border-radius:10px;padding:14px;">
+<div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Gestión de cuentas <span style="color:#8A97A3;font-weight:normal;text-transform:none;">· mes actual</span></div>
+<table role="presentation" width="100%" style="margin-top:9px;"><tr>
+${col("Cuentas autogeneradas", c.auto, c.autoH)}
+${col("Cuentas enviadas", c.env, c.envH, null, true)}
+${col("Silencio comercial", c.sil, c.silH, silColor(c.sil), true)}
+</tr></table>
+</td>
+</tr></table>
+</td></tr>`;
+  }
 
   // ---- resultado comercial por asociado (solo oficina) ----
   let asociadosBlock = "";
@@ -1408,6 +1482,7 @@ ${totalRow}
 </td></tr>
 
 ${cardsBlock}
+${crmBlock}
 ${asociadosBlock}
 ${recuadrosBlock}
 
@@ -1772,6 +1847,13 @@ function restoreState(state) {
   document.getElementById("sacsFields").style.display = sacsChk.checked ? "block" : "none";
   const sacs = state.sacs || {};
   setv("sacs_env", sacs.env); setv("sacs_apr", sacs.apr); setv("jd_sol", sacs.jdSol); setv("jd_otor", sacs.jdOtor);
+
+  const crmChk = document.getElementById("crmEnabled");
+  crmChk.checked = !!state.crmEnabled;
+  document.getElementById("crmFields").style.display = crmChk.checked ? "block" : "none";
+  const crm = state.crm || {};
+  setv("crm_auto", crm.auto); setv("crm_env", crm.env); setv("crm_sil", crm.sil);
+  setv("crm_autoH", crm.autoH); setv("crm_envH", crm.envH); setv("crm_silH", crm.silH);
 
   document.getElementById("asociadosWrap").innerHTML = "";
   (state.asociados || []).forEach((a) => renderAsociadoRow(a));

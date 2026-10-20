@@ -13,6 +13,13 @@
 - Periodicidad: Mensual → "vs Sep 25"; Trimestral/Cuatrimestral → "vs mismo período 25'". Tarjeta de Sociedades: "Vs YTD 25'".
 - Hero: junto a las variaciones va la descripción ("vs target", "vs {mes} {año-1}").
 
+- **Gestión de cuentas (CRM)**: tarjeta de ancho completo debajo de Sociedades / Nuevas / SACs. Aparece solo si el PDF trae la hoja de CRM
+  (se reconoce por "Cuentas Autogeneradas" + "Silencio Comercial", porque su título es solo el nombre de la oficina/AC). Casilla en el paso 5 para quitarla.
+  Muestra mes actual grande e histórico chico; los valores se copian tal cual del PDF (ej. "0%", "2 (33%)"), nunca se calculan.
+  Definiciones (Karli, 20/10/2026): **Cuentas Autogeneradas (AU)** = sociedades traídas a la plataforma por el propio AC · **Cuentas Enviadas** = cuentas
+  que no fueron traídas por los ACs (se las asignan) · **Silencio Comercial** = sociedades en estado NUEVO, sin primer contacto (mes: asignadas/reasignadas
+  ese mes; histórico: acumulado). Silencio en rojo si es > 0, verde si es 0. Sin gráfico semanal por ahora.
+
 ## 3. Contenido
 - Comentarios de Karli literales. Si "Pendientes" es el contenido, poner esa palabra tal cual.
 - Marcar inconsistencias del PDF en vez de resolverlas en silencio; confirmar con Karli ante datos ambiguos.

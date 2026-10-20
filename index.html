@@ -212,6 +212,21 @@
             <div><label>JD otorgadas</label><input type="text" id="jd_otor"></div>
           </div>
         </div>
+
+        <div class="checkbox-row"><input type="checkbox" id="crmEnabled"> <label style="margin:0;text-transform:none;font-weight:600;">Incluir tarjeta de Gestión de cuentas (CRM)</label></div>
+        <div class="hint">Se tilda sola si el PDF trae la hoja de CRM (Cuentas Autogeneradas / Enviadas / Silencio Comercial). Destildala para quitarla del mail.</div>
+        <div id="crmFields" style="display:none;">
+          <div class="row">
+            <div><label>Autogeneradas (mes)</label><input type="text" id="crm_auto"></div>
+            <div><label>Enviadas (mes)</label><input type="text" id="crm_env"></div>
+            <div><label>Silencio comercial (mes)</label><input type="text" id="crm_sil"></div>
+          </div>
+          <div class="row">
+            <div><label>Autogeneradas (histórico)</label><input type="text" id="crm_autoH"></div>
+            <div><label>Enviadas (histórico)</label><input type="text" id="crm_envH"></div>
+            <div><label>Silencio comercial (histórico)</label><input type="text" id="crm_silH"></div>
+          </div>
+        </div>
       </div>
     </details>
 
