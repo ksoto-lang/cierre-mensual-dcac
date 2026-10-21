@@ -33,6 +33,8 @@ y este archivo se actualiza en el mismo commit.
     Ahora toma siempre el primer número después del Estado (= JD Pedidas).
 24. Fix: **%CCC por asociado** exportado como fracción por un error del Power BI ("0,79" → 79%, confirmado por Karli). Solo se convierte "0,xx"/"1,xx" sin signo %.
     El test ahora verifica valores esperados por PDF (JD Solicitadas de Tandil, %CCC de Bs As Central) y que ningún %CCC por asociado quede como fracción o > 100.
+25. Nuevo diseño de la webapp estilo **cowboy boho** (cuero, terracota, arena, turquesa; costuras punteadas, flecos en el encabezado, tipografías Rye y Lora).
+    Solo cambia el formulario (`styles.css` + fuentes en `index.html`); el HTML del mail queda igual.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
