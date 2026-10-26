@@ -274,7 +274,10 @@
   <div class="panel preview-panel" style="padding:0;">
     <div class="preview-toolbar">
       <h2>Vista previa</h2>
-      <span class="hint" id="genStatus"></span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="hint" id="genStatus"></span>
+        <button class="btn-primary" id="btnCopyPreview" title="Copia el mail tal como se ve, para pegarlo directo en Gmail">📋 Copiar vista previa</button>
+      </div>
     </div>
     <div id="previewEmpty" class="empty-preview">Completá el formulario y tocá "Generar HTML" para ver el mail acá.</div>
     <iframe id="previewFrame" style="display:none;"></iframe>

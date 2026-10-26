@@ -38,6 +38,8 @@ y este archivo se actualiza en el mismo commit.
 26. **Foto de arriba del mail** nueva (vacas, elegida por Karli), fija en `assets.js` y recortada a banner 640x220. Las imágenes que se suben a mano
     (y las "de siempre" guardadas antes) se recortan solas al centro a ese formato. Fix celular: el mail ya no tiene ancho fijo de 640 px (ahora 100% con
     máximo 642 px) y la foto ya no usa max-height (se deformaba/cortaba en el celu). Se agregó meta viewport.
+27. Botón **"📋 Copiar vista previa"** arriba de la vista previa: copia el mail ya armado (como se ve, text/html + texto plano) para pegarlo
+    directo en el cuerpo de Gmail. "Copiar HTML" sigue copiando el código.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

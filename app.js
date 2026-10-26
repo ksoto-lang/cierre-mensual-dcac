@@ -45,6 +45,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("btnGenerate").addEventListener("click", onGenerate);
   document.getElementById("btnCopy").addEventListener("click", onCopy);
+  document.getElementById("btnCopyPreview").addEventListener("click", onCopyPreview);
   document.getElementById("btnDownload").addEventListener("click", onDownload);
   document.getElementById("btnSaveDraft").addEventListener("click", () => {
     saveDraft();
@@ -1938,6 +1939,45 @@ function onCopy() {
   navigator.clipboard.writeText(lastGeneratedHtml).then(() => {
     document.getElementById("genStatus").textContent = "Copiado al portapapeles ✓";
   });
+}
+
+// Copia el mail "renderizado" (como se ve en la vista previa) para pegarlo directo en el
+// cuerpo de un mail de Gmail. Se copia solo el contenido del <body> como text/html; si el
+// navegador no deja, se selecciona la vista previa y se usa el copiar clásico.
+function onCopyPreview() {
+  if (!lastGeneratedHtml) { alert("Primero generá el HTML."); return; }
+  const status = document.getElementById("genStatus");
+  const ok = () => { status.textContent = "Vista previa copiada ✓ — pegala en el mail con Ctrl+V"; };
+  const bodyM = lastGeneratedHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const fragment = bodyM ? bodyM[1] : lastGeneratedHtml;
+  const frame = document.getElementById("previewFrame");
+  const plain = (frame.contentDocument && frame.contentDocument.body) ? frame.contentDocument.body.innerText : "";
+
+  const fallback = () => {
+    try {
+      const doc = frame.contentDocument;
+      const sel = doc.getSelection();
+      const range = doc.createRange();
+      range.selectNodeContents(doc.body);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const done = doc.execCommand("copy");
+      sel.removeAllRanges();
+      if (done) ok(); else alert("No pude copiar. Probá con Copiar HTML.");
+    } catch (e) {
+      alert("No pude copiar. Probá con Copiar HTML.");
+    }
+  };
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    const item = new ClipboardItem({
+      "text/html": new Blob([fragment], { type: "text/html" }),
+      "text/plain": new Blob([plain], { type: "text/plain" }),
+    });
+    navigator.clipboard.write([item]).then(ok, fallback);
+  } else {
+    fallback();
+  }
 }
 
 function onDownload() {
