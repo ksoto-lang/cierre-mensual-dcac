@@ -1279,11 +1279,14 @@ function buildEmailHtml(s) {
     totalVendidas += parseFloat(String(u.vendidas).replace(/\./g, "").replace(",", ".")) || 0;
     if (u.compradas !== "--") totalCompradas += parseFloat(String(u.compradas).replace(/\./g, "").replace(",", ".")) || 0;
 
-    return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</td>` +
+    // barra = peso de la unidad en Operadas, proporcional a la unidad de mayor volumen del mes; va debajo del nombre
+    return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;">` +
+      `<div style="white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</div>` +
+      `<table cellpadding="0" cellspacing="0" style="margin:6px 0 0 0;"><tr><td style="width:60px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
+      `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
       `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
       (s.omitVsUnidades ? "" : `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
-      `<table cellpadding="0" cellspacing="0" style="margin:5px 0 0 0;"><tr><td style="width:60px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
       `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}">` +
       `<div style="font-size:14px;color:#33424F;">${u.ofrecidas}</div>` +

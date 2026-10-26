@@ -40,6 +40,8 @@ y este archivo se actualiza en el mismo commit.
     máximo 642 px) y la foto ya no usa max-height (se deformaba/cortaba en el celu). Se agregó meta viewport.
 27. Botón **"📋 Copiar vista previa"** arriba de la vista previa: copia el mail ya armado (como se ve, text/html + texto plano) para pegarlo
     directo en el cuerpo de Gmail. "Copiar HTML" sigue copiando el código.
+28. La **barra de volumen** de "Actividad por unidad de negocio" pasa de la columna Operadas a la columna Categoría, debajo del nombre de cada unidad
+    (antes parecía parte del "vs año anterior"). El nombre de la unidad ya no se parte en dos renglones.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
