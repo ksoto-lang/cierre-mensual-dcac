@@ -44,7 +44,7 @@ y este archivo se actualiza en el mismo commit.
     (antes parecía parte del "vs año anterior"). El nombre de la unidad ya no se parte en dos renglones.
 29. Se saca "· Reporte generado automáticamente" del pie del mail (queda solo "deCampoaCampo").
 30. **Bloque azul** (navy #152C42) detrás del encabezado (logo, "Cierre Mensual", nombre, mes) y del hero (cabezas operadas, Rendimiento, %CCC),
-    a pedido de Karli tras ver las propuestas de diseño. Logo blanco, textos blancos/celeste claro y variaciones en verde/rojo claros (\`varSmallOnDark\`)
+    a pedido de Karli tras ver las propuestas de diseño. Logo blanco, textos blancos/celeste claro y variaciones en verde/rojo claros (`varSmallOnDark`)
     para que se lean sobre azul; chips del hero con verde/rojo un poco más oscuros (contraste ≥ 4,5:1). El resto del mail no cambia.
 
 ## Análisis sin cambio de código
