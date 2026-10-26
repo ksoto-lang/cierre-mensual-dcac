@@ -56,4 +56,6 @@ hace falta "Cabezas No Concretadas" por comercial (no está en la tabla). Ver PE
 ## 5. Diseño
 - Paleta: navy `#152C42`, celeste de marca `#2E6DA4`, fondos `#EAF2FB` / `#F5F9FD` / `#FAFBFC`, grises `#8A97A3` / `#33424F`. Color del %CCC según umbrales (`cccColor()`).
 - Footer: CTA "Ver reporte completo" (degradé) + tarjetas Pulso Comercial (verde `#1a6b3c`, logo `pulse.dcac.ar/logo.png`) y Vademécum (`vademecum.dcac.ar`).
-- Compatibilidad de email: estilos inline, tablas, sin `background-image` ni `position:absolute`, sin CSS posicional. Ancho 640px.
+- Compatibilidad de email: estilos inline, tablas, sin `background-image` ni `position:absolute`, sin CSS posicional. Ancho máximo 640px pero fluido
+  (`width="100%"` + `max-width`), nunca `width="640"` fijo en tablas: en el celu se corta. Foto de arriba: banner 640x220, `width:100%;height:auto`, sin `max-height`.
+- En celular, la tabla "Actividad por unidad de negocio" (7 columnas) necesita ~575px: Gmail achica el mail entero para que entre (ver PENDIENTES).

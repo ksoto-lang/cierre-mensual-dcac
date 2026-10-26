@@ -12,6 +12,15 @@ let customHeaderImage = null; // {data, mime} en base64, o null = usar la de fá
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("headerLogo").src = "data:image/png;base64," + window.DCAC_ASSETS.logo;
   customHeaderImage = loadSavedDefaultHeaderImage(); // si guardaste una imagen "de siempre", arranca ya cargada
+  // imágenes "de siempre" guardadas antes del formato banner: se recortan una vez y se vuelven a guardar
+  if (customHeaderImage && !customHeaderImage.banner) {
+    cropToBanner(customHeaderImage).then((img) => {
+      if (!img.banner) return;
+      customHeaderImage = img;
+      try { localStorage.setItem(DEFAULT_HEADER_IMG_KEY, JSON.stringify(img)); } catch (e) {}
+      updateHeaderImagePreview();
+    });
+  }
 
   renderUnidades();
   renderAsociadoRow(); // arranca con una fila vacía
@@ -146,14 +155,45 @@ function loadCustomHeaderImage(file) {
     }
   }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     const result = reader.result; // "data:image/png;base64,AAAA..."
     const m = result.match(/^data:([^;]+);base64,(.*)$/);
     if (!m) return;
-    customHeaderImage = { mime: m[1], data: m[2] };
+    customHeaderImage = await cropToBanner({ mime: m[1], data: m[2] });
     updateHeaderImagePreview();
   };
   reader.readAsDataURL(file);
+}
+
+// Recorta (al centro) cualquier imagen a formato banner 640x220, para que en el mail se vea
+// igual en compu y en celular sin deformarse ni cortarse. Devuelve JPEG en base64.
+// Si el navegador no puede (o la imagen ya es banner), devuelve la original.
+const BANNER_RATIO = 640 / 220;
+function cropToBanner(imgData) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) return resolve(imgData);
+          let sw = w, sh = Math.round(w / BANNER_RATIO);
+          if (sh > h) { sh = h; sw = Math.round(h * BANNER_RATIO); }
+          const outW = Math.min(sw, 1480), outH = Math.round(outW / BANNER_RATIO);
+          if (Math.abs(w / h - BANNER_RATIO) < 0.02 && w <= 1480) return resolve({ ...imgData, banner: true });
+          const canvas = document.createElement("canvas");
+          canvas.width = outW; canvas.height = outH;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(imgData);
+          ctx.drawImage(img, Math.round((w - sw) / 2), Math.round((h - sh) / 2), sw, sh, 0, 0, outW, outH);
+          const out = canvas.toDataURL("image/jpeg", 0.85).match(/^data:([^;]+);base64,(.*)$/);
+          resolve(out ? { mime: out[1], data: out[2], banner: true } : imgData);
+        } catch (e) { resolve(imgData); }
+      };
+      img.onerror = () => resolve(imgData);
+      img.src = `data:${imgData.mime};base64,${imgData.data}`;
+    } catch (e) { resolve(imgData); }
+  });
 }
 function updateHeaderImagePreview() {
   const wrap = document.getElementById("headerImagePreviewWrap");
@@ -1428,14 +1468,14 @@ ${totalRow}
   const recuadrosBlock = s.recuadros.map((r) => buildRecuadroBlock(r)).join("\n");
 
   // ---- ensamblado final ----
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre Mensual - ${escapeHtml(tituloHeader)} - ${s.mes} ${s.anio}</title></head>
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cierre Mensual - ${escapeHtml(tituloHeader)} - ${s.mes} ${s.anio}</title></head>
 <body style="margin:0;padding:0;background-color:#F1F3F6;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:32px 0;"><tr><td align="center">
-<table role="presentation" width="642" cellpadding="0" cellspacing="0" style="background-color:#152C42;border-radius:15px;"><tr><td style="padding:1px;">
-<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:24px 6px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:642px;background-color:#152C42;border-radius:15px;"><tr><td style="padding:1px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);">
 
 <tr><td style="background-color:#ffffff;">
-<img src="data:${headerImgMime};base64,${headerImgData}" width="640" style="display:block;width:100%;height:auto;max-height:180px;">
+<img src="data:${headerImgMime};base64,${headerImgData}" width="640" alt="" style="display:block;width:100%;max-width:640px;height:auto;border:0;">
 </td></tr>
 <tr><td style="background-color:#ffffff;padding:20px 28px 4px 28px;text-align:center;">
 <img src="data:image/png;base64,${A.logoNavy || A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">

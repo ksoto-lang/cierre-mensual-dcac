@@ -35,6 +35,9 @@ y este archivo se actualiza en el mismo commit.
     El test ahora verifica valores esperados por PDF (JD Solicitadas de Tandil, %CCC de Bs As Central) y que ningún %CCC por asociado quede como fracción o > 100.
 25. Nuevo diseño de la webapp estilo **cowboy boho** (cuero, terracota, arena, turquesa; costuras punteadas, flecos en el encabezado, tipografías Rye y Lora).
     Solo cambia el formulario (`styles.css` + fuentes en `index.html`); el HTML del mail queda igual.
+26. **Foto de arriba del mail** nueva (vacas, elegida por Karli), fija en `assets.js` y recortada a banner 640x220. Las imágenes que se suben a mano
+    (y las "de siempre" guardadas antes) se recortan solas al centro a ese formato. Fix celular: el mail ya no tiene ancho fijo de 640 px (ahora 100% con
+    máximo 642 px) y la foto ya no usa max-height (se deformaba/cortaba en el celu). Se agregó meta viewport.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

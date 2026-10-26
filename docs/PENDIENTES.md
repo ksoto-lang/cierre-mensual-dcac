@@ -27,6 +27,10 @@ Preguntas para Karli: ¿en qué hoja del PDF aparece (si es que sale de ahí)? �
 - "Resultado Comercial" de oficina ahora trae por asociado Rendim., Cab. Operadas YTD, Soc. Operando YTD y variaciones en p.p. de %CCC/Rendim. Preguntar a Karli cuáles van a la tabla.
 - En la hoja de CRM la leyenda del gráfico dice "Cuentas Autogestionadas" y las tarjetas "Cuentas Autogeneradas": avisar para unificar en el Power BI.
 
+## 4c. Mail en celular
+- Con el ancho fluido, todo entra en 375px salvo las tablas de 7 columnas (Actividad por unidad de negocio y Resultado comercial por asociado), que piden ~575px.
+  Gmail achica el mail para que entre. Si se quiere que se lea grande en el celu, habría que rediseñar esas tablas (propuesta pendiente de OK de Karli).
+
 ## 5. Housekeeping
 - Reconciliar la plantilla del Proyecto de claude.ai (`diseno_entre_rios_junio2026_v6.html` en las instrucciones vs `diseno_entre_rios_julio2026_v7.html` en los documentos). Si la webapp es el camino oficial, actualizar el Proyecto con el orden de columnas vigente.
 - Guardar los 4 PDFs de referencia como fixtures locales (`tests/fixtures/`, no se suben al repo).

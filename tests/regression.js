@@ -105,6 +105,11 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       if (got !== e.esperado) problems.push(`${e.campo}: leyó "${got}", debería ser "${e.esperado}"`);
     });
 
+    // Regresión 7: el mail se adapta al celular (sin tablas de ancho fijo) y la foto de arriba no se deforma
+    if (/<table[^>]*width="64[02]"/.test(html)) problems.push("el mail tiene una tabla de ancho fijo (640/642): en el celu se corta");
+    const headerImg = (html.match(/<img[^>]*width="640"[^>]*>/) || [""])[0];
+    if (/max-height/.test(headerImg)) problems.push("la foto de arriba tiene max-height: se deforma o se corta");
+
     const missing = (res && res.missing) || [];
     console.log(`${problems.length ? "FAIL" : "ok  "}  ${f}  [tipo=${state.tipo}, asociados=${state.asociados.length}, missing=${missing.length}]`);
     missing.forEach((m) => console.log("        missing: " + m));
