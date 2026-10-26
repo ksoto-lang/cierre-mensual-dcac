@@ -55,6 +55,8 @@ hace falta "Cabezas No Concretadas" por comercial (no está en la tabla). Ver PE
 
 ## 5. Diseño
 - Paleta: navy `#152C42`, celeste de marca `#2E6DA4`, fondos `#EAF2FB` / `#F5F9FD` / `#FAFBFC`, grises `#8A97A3` / `#33424F`. Color del %CCC según umbrales (`cccColor()`).
+- Encabezado + hero sobre bloque azul navy \`#152C42\` (desde 26/10/2026): logo blanco (\`DCAC_ASSETS.logo\`), títulos blancos, etiquetas celeste \`#9FC5E8\`,
+  variaciones de Rendimiento/%CCC en \`#7BE0A6\` (sube) / \`#FF9C8F\` (baja). Mantener contraste ≥ 4,5:1 si se cambian colores.
 - Footer: CTA "Ver reporte completo" (degradé) + tarjetas Pulso Comercial (verde `#1a6b3c`, logo `pulse.dcac.ar/logo.png`) y Vademécum (`vademecum.dcac.ar`).
 - Compatibilidad de email: estilos inline, tablas, sin `background-image` ni `position:absolute`, sin CSS posicional. Ancho máximo 640px pero fluido
   (`width="100%"` + `max-width`), nunca `width="640"` fijo en tablas: en el celu se corta. Foto de arriba: banner 640x220, `width:100%;height:auto`, sin `max-height`.

@@ -1106,7 +1106,7 @@ function varTagInline(value, sign, label) {
   if (value === "" || value === undefined) return "";
   const positive = sign !== "neg";
   const bg = positive ? "#EAF7EE" : "#FDECEA";
-  const color = positive ? "#1E8449" : "#C0392B";
+  const color = positive ? "#17703C" : "#A93226";
   const arrow = positive ? "▲" : "▼";
   const suffix = String(value).includes("%") ? "" : "%";
   return `<td style="background-color:${bg};color:${color};font-size:11px;font-weight:bold;padding:4px 10px;border-radius:10px;">${arrow} ${value}${suffix}${label ? ` ${label}` : ""}</td>`;
@@ -1115,6 +1115,15 @@ function varSmall(value, sign, suffix) {
   if (value === "" || value === undefined) return `<span style="color:#B4BEC7;">—</span>`;
   const positive = sign !== "neg";
   const color = positive ? "#1E8449" : "#C0392B";
+  const arrow = positive ? "▲" : "▼";
+  const clean = String(value).replace(/^[+-]/, "");
+  return `<span style="font-weight:bold;color:${color};">${arrow}${clean}${suffix === undefined ? "%" : suffix}</span>`;
+}
+// igual que varSmall, pero con verde/rojo claros para que se lean sobre el bloque azul del hero
+function varSmallOnDark(value, sign, suffix) {
+  if (value === "" || value === undefined) return `<span style="color:#8FA6BC;">—</span>`;
+  const positive = sign !== "neg";
+  const color = positive ? "#7BE0A6" : "#FF9C8F";
   const arrow = positive ? "▲" : "▼";
   const clean = String(value).replace(/^[+-]/, "");
   return `<span style="font-weight:bold;color:${color};">${arrow}${clean}${suffix === undefined ? "%" : suffix}</span>`;
@@ -1481,20 +1490,20 @@ ${totalRow}
 <tr><td style="background-color:#ffffff;">
 <img src="data:${headerImgMime};base64,${headerImgData}" width="640" alt="" style="display:block;width:100%;max-width:640px;height:auto;border:0;">
 </td></tr>
-<tr><td style="background-color:#ffffff;padding:20px 28px 4px 28px;text-align:center;">
-<img src="data:image/png;base64,${A.logoNavy || A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
-<div style="color:#8A97A3;font-size:11px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;">Cierre Mensual</div>
-<div style="color:#152C42;font-size:22px;font-weight:800;margin-top:8px;">${escapeHtml(tituloHeader)}</div>
+<tr><td style="background-color:#152C42;padding:22px 28px 4px 28px;text-align:center;">
+<img src="data:image/png;base64,${A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
+<div style="color:#9FC5E8;font-size:11px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;">Cierre Mensual</div>
+<div style="color:#FFFFFF;font-size:22px;font-weight:800;margin-top:8px;">${escapeHtml(tituloHeader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px auto 0 auto;"><tr>
 <td style="background-color:#EAF2FB;color:#1B4F8C;font-size:11px;font-weight:bold;padding:5px 14px;border-radius:12px;letter-spacing:.03em;">${badge}</td>
 </tr></table>
 </td></tr>
 
-<tr><td style="padding:28px 28px 6px 28px;">
+<tr><td style="background-color:#152C42;padding:24px 28px 26px 28px;">
 <table role="presentation" width="100%"><tr>
 <td style="width:54%;vertical-align:top;">
-<div style="color:#8A97A3;font-size:11px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Cabezas operadas</div>
-<div style="color:#152C42;font-size:42px;font-weight:800;line-height:1.1;margin-top:3px;">${s.hero.operadas || "--"}</div>
+<div style="color:#9FC5E8;font-size:11px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Cabezas operadas</div>
+<div style="color:#FFFFFF;font-size:42px;font-weight:800;line-height:1.1;margin-top:3px;">${s.hero.operadas || "--"}</div>
 <table cellpadding="0" cellspacing="0" style="margin-top:8px;"><tr>
 ${varTagInline(s.hero.varAnio, s.hero.varAnioSigno, vsLabel)}
 <td style="width:6px;"></td>
@@ -1503,21 +1512,21 @@ ${varTagInline(s.hero.varTarget, s.hero.varTargetSigno, "vs target")}
 </td>
 <td style="width:2%;"></td>
 <td style="width:44%;vertical-align:top;">
-<table role="presentation" width="100%" style="background-color:#F5F9FD;border:1px solid #DCE8F5;border-radius:10px;"><tr>
+<table role="presentation" width="100%" style="background-color:#233B53;border:1px solid #35506B;border-radius:10px;"><tr>
 ${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
-<div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
-<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
+<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
+<div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
+<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
 </td>` : `<td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Rendimiento</div>
-<div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.rendim || "--"}%</div>
-<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.rendimVar, s.hero.rendimSigno, " p.p.")}</div>
+<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Rendimiento</div>
+<div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.rendim || "--"}%</div>
+<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.rendimVar, s.hero.rendimSigno, " p.p.")}</div>
 </td>
-<td style="width:1px;background-color:#DCE8F5;"></td>
+<td style="width:1px;background-color:#35506B;"></td>
 <td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#5C7A9A;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
-<div style="color:#152C42;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
-<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmall(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
+<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
+<div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
+<div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
 </td>`}
 </tr></table>
 </td>
