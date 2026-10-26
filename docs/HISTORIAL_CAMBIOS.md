@@ -46,6 +46,8 @@ y este archivo se actualiza en el mismo commit.
 30. **Bloque azul** (navy #152C42) detrás del encabezado (logo, "Cierre Mensual", nombre, mes) y del hero (cabezas operadas, Rendimiento, %CCC),
     a pedido de Karli tras ver las propuestas de diseño. Logo blanco, textos blancos/celeste claro y variaciones en verde/rojo claros (`varSmallOnDark`)
     para que se lean sobre azul; chips del hero con verde/rojo un poco más oscuros (contraste ≥ 4,5:1). El resto del mail no cambia.
+31. El texto "vs {mes} {año-1}" de las variaciones en "Actividad por unidad de negocio" y "Resultado comercial por asociado" va en su propio renglón,
+    debajo del % (antes se cortaba "vs Sep / 25").
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

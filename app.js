@@ -1262,8 +1262,9 @@ function buildEmailHtml(s) {
     : `vs ${s.mes.slice(0, 3)} ${anioAnt2}`;
   const vsYtdLabel = `Vs YTD ${anioAnt2}'`;
   // Opción: omitir por completo la variación vs año anterior (flecha, % y texto) en cada tabla.
-  const vsSpanUnidades = ` <span style="color:#9AA7B2;">${vsLabel}</span>`;
-  const vsSpanAsoc = ` <span style="color:#9AA7B2;">${vsLabel}</span>`;
+  // El texto "vs Sep 25" va en su propio renglón, debajo del % de variación (pedido de Karli: antes se cortaba "vs Sep / 25").
+  const vsSpanUnidades = `<div style="color:#9AA7B2;font-weight:normal;white-space:nowrap;margin-top:1px;">${vsLabel}</div>`;
+  const vsSpanAsoc = `<div style="color:#9AA7B2;font-weight:normal;white-space:nowrap;margin-top:1px;">${vsLabel}</div>`;
 
   // Imagen de fondo del header: la que subió el usuario, o la de fábrica (foto de vacas).
   const headerImgData = (s.headerImage && s.headerImage.data) ? s.headerImage.data : A.headerBg;
