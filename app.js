@@ -1586,7 +1586,7 @@ ${recuadrosBlock}
 </td>
 </tr></table>
 
-<div style="text-align:center;font-size:11px;color:#9AA7B2;margin-top:16px;">deCampoaCampo · Reporte generado automáticamente</div>
+<div style="text-align:center;font-size:11px;color:#9AA7B2;margin-top:16px;">deCampoaCampo</div>
 </td></tr>
 
 </table>
