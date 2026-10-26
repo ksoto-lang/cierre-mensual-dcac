@@ -1334,12 +1334,12 @@ function buildEmailHtml(s) {
 <td style="width:50%;vertical-align:top;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Mes</div>
 <div style="color:#152C42;font-size:18px;font-weight:800;margin-top:2px;">${s.sociedades.mes || "--"}</div>
-<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.mesVar || "—"} ${vsLabel})</div>
+${hasVar(s.sociedades.mesVar) ? `<div style="font-size:10px;color:${String(s.sociedades.mesVar).trim().startsWith("-") ? "#C0392B" : "#1E8449"};font-weight:bold;margin-top:1px;">${s.sociedades.mesVar}</div><div style="font-size:10px;color:#9AA7B2;white-space:nowrap;">${vsLabel}</div>` : ""}
 </td>
 <td style="width:50%;vertical-align:top;border-left:1px solid #D7E3F0;padding-left:10px;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">YTD</div>
 <div style="color:#152C42;font-size:18px;font-weight:800;margin-top:2px;">${s.sociedades.ytd || "--"}</div>
-<div style="font-size:10px;color:#1E8449;font-weight:bold;margin-top:1px;">(${s.sociedades.ytdVar || "—"} ${vsYtdLabel})</div>
+${hasVar(s.sociedades.ytdVar) ? `<div style="font-size:10px;color:${String(s.sociedades.ytdVar).trim().startsWith("-") ? "#C0392B" : "#1E8449"};font-weight:bold;margin-top:1px;">${s.sociedades.ytdVar}</div><div style="font-size:10px;color:#9AA7B2;white-space:nowrap;">${vsYtdLabel}</div>` : ""}
 </td>
 </tr></table>
 </td><td style="width:3%;"></td>

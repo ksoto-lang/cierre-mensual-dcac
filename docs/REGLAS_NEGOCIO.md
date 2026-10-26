@@ -10,7 +10,8 @@
 - SACs: si el PDF no tiene hoja de SACs, la tarjeta se omite y las otras dos se ensanchan (48,5% c/u). **Sin hoja de SACs todo es vacío/0, nunca un valor por defecto.**
 - Faltantes: tag gris "—", jamás un valor inventado. MAG solo si aparece explícitamente en el PDF.
 - Barras de la tabla de actividad: peso de cada unidad en **Operadas**, proporcional a la unidad de mayor volumen del mes (la mayor = barra llena). No tienen que ver con la variación vs año anterior. Van en la columna **Categoría**, debajo del nombre de la unidad (pedido de Karli, 26/10/2026).
-- Periodicidad: Mensual → "vs Sep 25"; Trimestral/Cuatrimestral → "vs mismo período 25'". Tarjeta de Sociedades: "Vs YTD 25'".
+- Periodicidad: Mensual → "vs Sep 25"; Trimestral/Cuatrimestral → "vs mismo período 25'". Tarjeta de Sociedades: "Vs YTD 25'" (siempre en un solo renglón,
+  debajo de la variación; sin variación no se muestra).
 - Hero: junto a las variaciones va la descripción ("vs target", "vs {mes} {año-1}").
 - Tablas de unidades y de asociados: el texto "vs {mes} {año-1}" / "vs target" va en su propio renglón, debajo del %. Si la variación está vacía,
   no se muestra nada (ni "—" ni el texto "vs ...") — pedido de Karli, 26/10/2026.
