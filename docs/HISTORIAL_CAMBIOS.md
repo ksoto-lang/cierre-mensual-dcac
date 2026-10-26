@@ -48,6 +48,8 @@ y este archivo se actualiza en el mismo commit.
     para que se lean sobre azul; chips del hero con verde/rojo un poco más oscuros (contraste ≥ 4,5:1). El resto del mail no cambia.
 31. El texto "vs {mes} {año-1}" de las variaciones en "Actividad por unidad de negocio" y "Resultado comercial por asociado" va en su propio renglón,
     debajo del % (antes se cortaba "vs Sep / 25").
+32. En "Resultado comercial por asociado" el "vs target" también va debajo del %. En las dos tablas, si la variación viene vacía no se muestra nada
+    (antes salía "—" con "vs Sep 25"). El test lo controla.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

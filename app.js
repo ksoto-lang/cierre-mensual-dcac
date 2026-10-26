@@ -1265,6 +1265,9 @@ function buildEmailHtml(s) {
   // El texto "vs Sep 25" va en su propio renglón, debajo del % de variación (pedido de Karli: antes se cortaba "vs Sep / 25").
   const vsSpanUnidades = `<div style="color:#9AA7B2;font-weight:normal;white-space:nowrap;margin-top:1px;">${vsLabel}</div>`;
   const vsSpanAsoc = `<div style="color:#9AA7B2;font-weight:normal;white-space:nowrap;margin-top:1px;">${vsLabel}</div>`;
+  const vsSpanTarget = `<div style="color:#9AA7B2;font-weight:normal;white-space:nowrap;margin-top:1px;">vs target</div>`;
+  // Variación vacía (sin dato en el PDF) -> no se muestra nada: ni "—" ni el texto "vs ...".
+  const hasVar = (v) => v !== undefined && v !== null && !/^\s*(|--|—|-)\s*$/.test(String(v));
 
   // Imagen de fondo del header: la que subió el usuario, o la de fábrica (foto de vacas).
   const headerImgData = (s.headerImage && s.headerImage.data) ? s.headerImage.data : A.headerBg;
@@ -1296,11 +1299,11 @@ function buildEmailHtml(s) {
       `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
       `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
-      (s.omitVsUnidades ? "" : `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
+      (s.omitVsUnidades || !hasVar(u.opVar) ? "" : `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
       `</td>` +
       `<td align="center" style="padding:12px 10px;${borderBottom}">` +
       `<div style="font-size:14px;color:#33424F;">${u.ofrecidas}</div>` +
-      (u.ofrecidas !== "--" && !s.omitVsUnidades ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)}${vsSpanUnidades}</div>` : "") +
+      (u.ofrecidas !== "--" && !s.omitVsUnidades && hasVar(u.ofVar) ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)}${vsSpanUnidades}</div>` : "") +
       `</td>` +
       `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
       `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
@@ -1420,10 +1423,10 @@ ${col("Silencio comercial", c.sil, c.silH, silColor(c.sil), true)}
       const cc = cccColor(a.ccc);
       const bb = "border-bottom:1px solid #EDEFF2;";
       const altBg = alt ? "background-color:#FAFBFC;" : "";
-      const ofrVarLine = a.ofrecidasVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)}${vsSpanAsoc}</div>` : "";
-      const opVarLine = a.operadasVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)}${vsSpanAsoc}</div>` : "";
-      const targetVarLine = a.targetVar ? `<div style="font-size:10px;margin-top:1px;">${varSmall(a.targetVar, a.targetSign)} <span style="color:#9AA7B2;">vs target</span></div>` : "";
-      const socVarLine = a.socVar && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")}${vsSpanAsoc}</div>` : "";
+      const ofrVarLine = hasVar(a.ofrecidasVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)}${vsSpanAsoc}</div>` : "";
+      const opVarLine = hasVar(a.operadasVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)}${vsSpanAsoc}</div>` : "";
+      const targetVarLine = hasVar(a.targetVar) ? `<div style="font-size:10px;margin-top:3px;">${varSmall(a.targetVar, a.targetSign)}${vsSpanTarget}</div>` : "";
+      const socVarLine = hasVar(a.socVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")}${vsSpanAsoc}</div>` : "";
       return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
 <td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
 <div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>

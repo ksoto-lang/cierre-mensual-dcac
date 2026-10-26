@@ -105,6 +105,9 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       if (got !== e.esperado) problems.push(`${e.campo}: leyó "${got}", debería ser "${e.esperado}"`);
     });
 
+    // Regresión 8: variación vacía en las tablas -> no se muestra "—" con "vs Sep 25" / "vs target"
+    if (/—<\/span><div style="color:#9AA7B2;[^"]*">vs /.test(html)) problems.push('aparece "— vs ..." en una tabla: si la variación está vacía no debe mostrarse nada');
+
     // Regresión 7: el mail se adapta al celular (sin tablas de ancho fijo) y la foto de arriba no se deforma
     if (/<table[^>]*width="64[02]"/.test(html)) problems.push("el mail tiene una tabla de ancho fijo (640/642): en el celu se corta");
     const headerImg = (html.match(/<img[^>]*width="640"[^>]*>/) || [""])[0];

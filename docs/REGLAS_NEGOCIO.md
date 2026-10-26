@@ -12,6 +12,8 @@
 - Barras de la tabla de actividad: peso de cada unidad en **Operadas**, proporcional a la unidad de mayor volumen del mes (la mayor = barra llena). No tienen que ver con la variación vs año anterior. Van en la columna **Categoría**, debajo del nombre de la unidad (pedido de Karli, 26/10/2026).
 - Periodicidad: Mensual → "vs Sep 25"; Trimestral/Cuatrimestral → "vs mismo período 25'". Tarjeta de Sociedades: "Vs YTD 25'".
 - Hero: junto a las variaciones va la descripción ("vs target", "vs {mes} {año-1}").
+- Tablas de unidades y de asociados: el texto "vs {mes} {año-1}" / "vs target" va en su propio renglón, debajo del %. Si la variación está vacía,
+  no se muestra nada (ni "—" ni el texto "vs ...") — pedido de Karli, 26/10/2026.
 
 - **Gestión de cuentas (CRM)**: tarjeta de ancho completo debajo de Sociedades / Nuevas / SACs. Aparece solo si el PDF trae la hoja de CRM
   (se reconoce por "Cuentas Autogeneradas" + "Silencio Comercial", porque su título es solo el nombre de la oficina/AC). Casilla en el paso 5 para quitarla.
