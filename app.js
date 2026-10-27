@@ -796,8 +796,8 @@ function parseNuevasSociedadesPage(text) {
 function parseSacsPage(text) {
   const enviados = text.match(/SACs?\s*Enviados\s+(--|[\d.,]+)/i);
   const aprobados = text.match(/SACs?\s*Aprobados\s+(--|[\d.,]+)/i);
-  const jdOtor = text.match(/JD\s*Otorgadas\s+(--|[\d.,]+)/i);
-  const jdSol = text.match(/JD\s*(?:Pedidas|Solicitadas)\s+(--|[\d.,]+)/i);
+  const jdOtor = text.match(/JDs?\s*Otorgadas\s+(--|[\d.,]+)/i);
+  const jdSol = text.match(/JDs?\s*(?:Pedidas|Solicitadas)\s+(--|[\d.,]+)/i);
   return {
     enviados: enviados && !isDash(enviados[1]) ? enviados[1] : "",
     aprobados: aprobados && !isDash(aprobados[1]) ? aprobados[1] : "",
@@ -839,13 +839,21 @@ function parseCrmPage(text) {
 // Las celdas vacías no dejan texto, así que la cantidad de números varía: JD Pedidas es siempre
 // el PRIMER número después del Estado (APROBADO, INFO_SOL, ...). Antes se tomaba el número
 // pegado a la UN y en filas con CIs se colaba "CIs Enviadas" (caso Tandil sep 26: 1357 en vez de 17).
+// Formato nuevo (oct 2026): "Razón Social Solicitante RESPUESTA JDsPedidas [JDsOtorgadas] Fecha Unidad"
+// (fecha ANTES de la unidad, y la unidad escrita entera: "Invernada"). JD Pedidas sigue siendo el
+// primer número después de la respuesta. Una fila no puede cumplir los dos formatos a la vez.
 function sumJdPedidasFromDetailTable(text) {
-  const re = /\b[A-Z][A-Z_]{3,}\s+(\d+)(?:\s+\d+){0,4}\s+(?:INV|FAE|CRIA|MAG)\s+\d{1,2}\/\d{1,2}\/\d{2,4}/g;
+  const formatos = [
+    /\b[A-Z][A-Z_]{3,}\s+(\d+)(?:\s+\d+){0,4}\s+(?:INV|FAE|CRIA|MAG)\s+\d{1,2}\/\d{1,2}\/\d{2,4}/g,
+    /\b[A-Z][A-Z_]{3,}\s+(\d+)(?:\s+\d+){0,4}\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+(?:Invernada|Faena|Cr[ií]a|MAG|INV|FAE|CRIA)\b/g,
+  ];
   let m, sum = 0, count = 0;
-  while ((m = re.exec(text)) !== null) {
-    sum += parseInt(m[1], 10) || 0;
-    count++;
-  }
+  formatos.forEach((re) => {
+    while ((m = re.exec(text)) !== null) {
+      sum += parseInt(m[1], 10) || 0;
+      count++;
+    }
+  });
   return count ? String(sum) : "";
 }
 
@@ -924,7 +932,7 @@ function autofillFromPages(pages) {
     }
 
     // diapositiva de SACs (tarjetas "SACs Enviados/Aprobados/JD Otorgadas")
-    if (/SACs?\s*Enviados\s+(?:--|[\d.,]+)/.test(p.text) || /SACS?\s*aprob|JD\s*[Oo]torgadas/.test(p.text)) {
+    if (/SACs?\s*Enviados\s+(?:--|[\d.,]+)/.test(p.text) || /SACS?\s*aprob|JDs?\s*[Oo]torgadas/.test(p.text)) {
       const sacs = parseSacsPage(p.text);
       if (sacs.enviados) setVal("sacs_env", sacs.enviados);
       if (sacs.aprobados) setVal("sacs_apr", sacs.aprobados);

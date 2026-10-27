@@ -12,5 +12,6 @@ tienen datos comerciales reales. Archivos esperados (cualquier nombre, terminand
 | Oficina Tandil (sep 2026)         | Hoja de CRM (Gestión de cuentas), SACs, Resultado Comercial vacío |
 | Oficina Bs As Central (sep 2026)  | Formato nuevo de Resultado Comercial (%CCC "0,79", YTD), sin CRM |
 | Franco Barrionuevo (jun 2026)     | Representante, sin SACs ni CRM                               |
+| Jose Olmedo (sep 2026, CRM con detalle) | Formato nuevo de SACs ("JDs", fecha antes de unidad), CRM + "Detalle cuentas mes actual" |
 
 Si Karli manda un PDF nuevo con formato raro, agregarlo acá y sumar su caso a `tests/regression.js`.

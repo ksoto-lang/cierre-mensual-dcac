@@ -80,7 +80,9 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
     const hasCrmCard = (h) => /Cuentas autogeneradas/i.test(h);
     if (crmPage) {
       if (!w.document.getElementById("crmEnabled").checked || !hasCrmCard(html)) problems.push("el PDF tiene hoja de CRM pero no aparece la tarjeta de CRM");
-      const autoMes = (crmPage.text.match(/Cuentas\s+Autogeneradas\s+([\d.,]+)/i) || [])[1];
+      // solo la parte "MES ACTUAL" (antes de "HISTÓRICO"); si el mes trae "--" no hay número que comparar
+      const mesTxt = crmPage.text.split(/HIST[ÓO]RICO/i)[0];
+      const autoMes = (mesTxt.match(/Cuentas\s+Autogeneradas\s+([\d.,]+)/i) || [])[1];
       if (autoMes && state.crm.auto !== autoMes) problems.push(`Cuentas autogeneradas del mes: leyó "${state.crm.auto}", el PDF dice "${autoMes}"`);
       w.document.getElementById("crmEnabled").checked = false;
       if (hasCrmCard(w.buildEmailHtml(w.readState()))) problems.push("destildar la casilla de CRM no quita la tarjeta");
@@ -99,6 +101,8 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
     const ESPERADOS = [
       { archivo: /tandil/i, campo: "JD Solicitadas", valor: (s) => s.sacs.jdSol, esperado: "17" },
       { archivo: /bs as central/i, campo: "%CCC asociado #1", valor: (s) => (s.asociados[0] || {}).ccc, esperado: "79" },
+      { archivo: /olmedo.*crm/i, campo: "JD Solicitadas (formato nuevo de SACs)", valor: (s) => s.sacs.jdSol, esperado: "8" },
+      { archivo: /olmedo.*crm/i, campo: "JD Otorgadas (\"JDs Otorgadas\")", valor: (s) => s.sacs.jdOtor, esperado: "7" },
     ];
     ESPERADOS.filter((e) => e.archivo.test(f)).forEach((e) => {
       const got = e.valor(state);

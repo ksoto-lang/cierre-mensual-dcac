@@ -55,6 +55,9 @@ y este archivo se actualiza en el mismo commit.
 34. Las barras de "Actividad por unidad de negocio" pasan a mostrar el **% de cada unidad sobre el total** de operadas (entre todas suman el 100%).
     Antes la unidad más grande salía con la barra llena y parecía el 100% de las operaciones. Unidad sin operadas = barra vacía.
 35. La tarjeta de CRM se titula **"CRM"** (antes "Gestión de cuentas · mes actual").
+30. Fix: formato nuevo de la hoja de SACs (oct 2026): "JDs Otorgadas" en plural y tabla de detalle con columnas Razón Social · Solicitante · Respuesta ·
+    JDs Pedidas · JDs Otorgadas · Fecha · Unidad (fecha antes de la unidad). El mail mostraba "-- / --"; ahora lee los dos formatos (Jose Olmedo sep 26: 7 / 8).
+    Test: corregido el control de "Cuentas autogeneradas" (comparaba con el histórico cuando el mes viene "--").
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
