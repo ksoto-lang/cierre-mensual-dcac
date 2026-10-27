@@ -58,6 +58,9 @@ y este archivo se actualiza en el mismo commit.
 30. Fix: formato nuevo de la hoja de SACs (oct 2026): "JDs Otorgadas" en plural y tabla de detalle con columnas Razón Social · Solicitante · Respuesta ·
     JDs Pedidas · JDs Otorgadas · Fecha · Unidad (fecha antes de la unidad). El mail mostraba "-- / --"; ahora lee los dos formatos (Jose Olmedo sep 26: 7 / 8).
     Test: corregido el control de "Cuentas autogeneradas" (comparaba con el histórico cuando el mes viene "--").
+31. **Sociedades en silencio comercial** al final del cuadro de CRM: se toman del listado "Detalle cuentas mes actual" (estado NUEVO), linkeadas al
+    Vademécum por CUIT y con fecha de asignación. Campo editable en el paso 5 con control: la cantidad del listado tiene que coincidir con el Silencio
+    Comercial del mes (aviso en verde/rojo en el formulario, nunca en el mail). El test verifica la coincidencia.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

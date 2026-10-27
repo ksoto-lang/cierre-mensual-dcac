@@ -23,6 +23,11 @@
   que no fueron traídas por los ACs (se las asignan) · **Silencio Comercial** = sociedades en estado NUEVO, sin primer contacto (mes: asignadas/reasignadas
   ese mes; histórico: acumulado). Silencio en rojo si es > 0, verde si es 0. Sin gráfico semanal por ahora.
 
+- **Sociedades en silencio comercial** (pedido de Karli, 27/10/2026): al final del cuadro de CRM se listan las sociedades del listado
+  **"Detalle cuentas mes actual"** del Power BI en estado **NUEVO** (no se usa "Detalle cuentas históricas sin gestionar"). Nombre = Razón Social
+  (o Nombre Apellido si no hay razón social), link al Vademécum por CUIT y fecha de asignación. **La cantidad del listado siempre debe coincidir con
+  el Silencio Comercial del mes**; si no coincide, la webapp avisa en el formulario para que Karli lo revise (no se completa ni se corrige solo).
+
 ## 3. Contenido
 - Comentarios de Karli literales. Si "Pendientes" es el contenido, poner esa palabra tal cual.
 - Marcar inconsistencias del PDF en vez de resolverlas en silencio; confirmar con Karli ante datos ambiguos.

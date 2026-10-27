@@ -33,6 +33,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("crmEnabled").addEventListener("change", (e) => {
     document.getElementById("crmFields").style.display = e.target.checked ? "block" : "none";
   });
+  ["crm_sil", "crm_silList"].forEach((id) => document.getElementById(id).addEventListener("input", updateCrmSilCheck));
   document.getElementById("btnAddAsociado").addEventListener("click", () => renderAsociadoRow());
   document.getElementById("btnAddRecuadro").addEventListener("click", () => addRecuadroCard());
   document.getElementById("btnAddCisRecuadro").addEventListener("click", () => {
@@ -831,6 +832,82 @@ function parseCrmPage(text) {
   };
 }
 
+// Hoja "Detalle cuentas mes actual" del CRM (suele venir en la misma página que "Detalle cuentas
+// históricas sin gestionar", que NO se usa). Fila: "[Razón Social] [CUIT] Nombre Apellido Fecha Fuente
+// ESTADO mail-del-AC" — la columna Contacto es un ícono y no deja texto. Cada fila termina en el mail.
+// Las sociedades en silencio comercial son las de ESTADO = NUEVO (sin primer contacto).
+const CRM_ESTADOS = "NUEVO|ABIERTO|ACTIVO|CONVERTIDO|NO HABILITADO|DESCARTADO|EN REVISI[ÓO]N";
+function hasCrmDetalleMesActual(text) {
+  return /Detalle\s+cuentas\s+mes\s+actual/i.test(text);
+}
+function parseCrmDetalleMesActual(text) {
+  const start = text.search(/Detalle\s+cuentas\s+mes\s+actual/i);
+  if (start < 0) return null;
+  let seg = text.slice(start);
+  const end = seg.search(/Detalle\s+cuentas\s+hist/i);
+  if (end > 0) seg = seg.slice(0, end);
+  const hdr = seg.match(/AC\s+asignado/i);
+  if (hdr) seg = seg.slice(hdr.index + hdr[0].length);
+  const rows = [];
+  const rowRe = /([\s\S]*?)\s*[^\s@]+@[^\s@]+\.[A-Za-z.]+/g;
+  const fila = new RegExp("^(.*?)\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{4})\\s+(.+?)\\s+(" + CRM_ESTADOS + ")\\s*$", "i");
+  let m;
+  while ((m = rowRe.exec(seg)) !== null) {
+    const r = m[1].trim().match(fila);
+    if (!r) continue;
+    const cuitM = r[1].match(/^(.*?)\s*\b(\d{11})\b\s*(.*)$/);
+    rows.push({
+      razon: cuitM ? cuitM[1].trim() : "",
+      cuit: cuitM ? cuitM[2] : "",
+      persona: (cuitM ? cuitM[3] : r[1]).trim(),
+      fecha: r[2],
+      fuente: r[3].trim(),
+      estado: r[4].toUpperCase(),
+    });
+  }
+  return rows;
+}
+// Línea editable del formulario <-> sociedad: "Grand Family SA — CUIT 30707711562 — asignada 29/09/2026"
+function crmSilLine(row) {
+  const nombre = row.razon || row.persona;
+  return nombre + (row.cuit ? ` — CUIT ${row.cuit}` : "") + (row.fecha ? ` — asignada ${row.fecha}` : "");
+}
+function parseCrmSilLines(text) {
+  return String(text || "").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const cuit = (l.match(/CUIT\s*(\d{11})/i) || [])[1] || "";
+    const fecha = (l.match(/asignada\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) || [])[1] || "";
+    return { nombre: l.split(/\s+—\s+/)[0].trim(), cuit, fecha };
+  });
+}
+// Cantidad de "Silencio Comercial" del mes: "3 (100%)" -> 3 · "3" -> 3 · "0%" -> 0 · otra cosa -> null
+function crmSilCount(sil) {
+  const s = String(sil || "").trim();
+  let m = s.match(/^(\d+)\s*\(/) || s.match(/^(\d+)$/);
+  if (m) return parseInt(m[1], 10);
+  if (/^0\s*%$/.test(s)) return 0;
+  return null;
+}
+// Control pedido por Karli: la cantidad del listado tiene que coincidir con el Silencio Comercial del mes.
+function updateCrmSilCheck() {
+  const el = document.getElementById("crmSilCheck");
+  if (!el) return;
+  const esperado = crmSilCount(document.getElementById("crm_sil").value);
+  const listado = parseCrmSilLines(document.getElementById("crm_silList").value).length;
+  if (esperado === null) {
+    el.textContent = listado ? `Listado: ${listado} sociedad(es). No pude leer la cantidad de Silencio comercial para comparar.` : "";
+    el.className = "status-box status-warn";
+    el.style.display = listado ? "block" : "none";
+  } else if (esperado === listado) {
+    el.textContent = `✓ Coincide: ${listado} sociedad(es) en silencio comercial este mes.`;
+    el.className = "status-box status-ok";
+    el.style.display = "block";
+  } else {
+    el.textContent = `⚠ No coincide: la hoja de CRM dice ${esperado} en silencio comercial y el listado tiene ${listado}. Revisalo antes de mandar el mail.`;
+    el.className = "status-box status-err";
+    el.style.display = "block";
+  }
+}
+
 // "{Nombre} - SACs Enviados" (tabla de DETALLE, una fila por sociedad) -> suma de
 // "JD Pedidas" de todas las filas. La tarjeta resumen del PDF nunca trae un total de
 // "JD Solicitadas" (solo trae "JD Otorgadas"), así que el total real de pedidas hay
@@ -898,7 +975,7 @@ function autofillFromPages(pages) {
     filled.push("nombre/tipo/mes/año");
   }
 
-  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = [], sacsJdSolSum = null, crm = null;
+  let resultado = null, cabezasOp = null, sociedadesOp = null, nuevas = null, resumenTarget = null, asociadosOficina = [], sacsJdSolSum = null, crm = null, crmDetalle = null;
   const unitPages = {}; // label -> parsed
 
   pages.forEach((p) => {
@@ -954,17 +1031,32 @@ function autofillFromPages(pages) {
     }
 
     if (!crm && isCrmPage(p.text)) crm = parseCrmPage(p.text);
+    if (!crmDetalle && hasCrmDetalleMesActual(p.text)) crmDetalle = parseCrmDetalleMesActual(p.text);
   });
 
   // ---- Gestión de cuentas (CRM): la tarjeta se activa solo si el PDF trae esa hoja ----
-  ["crm_auto", "crm_env", "crm_sil", "crm_autoH", "crm_envH", "crm_silH"].forEach((id) => { document.getElementById(id).value = ""; });
+  ["crm_auto", "crm_env", "crm_sil", "crm_autoH", "crm_envH", "crm_silH", "crm_silList"].forEach((id) => { document.getElementById(id).value = ""; });
   document.getElementById("crmEnabled").checked = !!crm;
   document.getElementById("crmFields").style.display = crm ? "block" : "none";
   if (crm) {
     setVal("crm_auto", crm.auto); setVal("crm_env", crm.env); setVal("crm_sil", crm.sil);
     setVal("crm_autoH", crm.autoH); setVal("crm_envH", crm.envH); setVal("crm_silH", crm.silH);
     filled.push("Gestión de cuentas (CRM)");
+    // sociedades en silencio comercial = las del listado "Detalle cuentas mes actual" en estado NUEVO
+    if (crmDetalle) {
+      const enSilencio = crmDetalle.filter((r) => r.estado === "NUEVO");
+      setVal("crm_silList", enSilencio.map(crmSilLine).join("\n"));
+      const esperado = crmSilCount(crm.sil);
+      if (esperado !== null && esperado !== enSilencio.length) {
+        missing.push(`Silencio comercial: la hoja de CRM dice ${esperado} pero el listado "Detalle cuentas mes actual" tiene ${enSilencio.length} — revisalo`);
+      } else if (enSilencio.length) {
+        filled.push(`sociedades en silencio comercial (${enSilencio.length})`);
+      }
+    } else if (crmSilCount(crm.sil)) {
+      missing.push(`Silencio comercial: el PDF no trae el listado "Detalle cuentas mes actual" para nombrar las ${crmSilCount(crm.sil)} sociedades`);
+    }
   }
+  updateCrmSilCheck();
 
   // ---- hero + sociedades desde Resultado Comercial (o, si no está, desde Cabezas Operadas) ----
   if (resultado) {
@@ -1243,6 +1335,7 @@ function readState() {
     crm: {
       auto: g("crm_auto"), env: g("crm_env"), sil: g("crm_sil"),
       autoH: g("crm_autoH"), envH: g("crm_envH"), silH: g("crm_silH"),
+      silList: document.getElementById("crm_silList").value,
     },
     asociados,
     recuadros: readRecuadros().map((r) => {
@@ -1381,6 +1474,22 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
 <div style="color:${color || "#152C42"};font-size:20px;font-weight:800;margin-top:2px;">${mes || "--"}</div>
 <div style="font-size:10px;color:#8A97A3;margin-top:1px;">Histórico: <span style="font-weight:bold;color:${hist && color ? silColor(hist) : "#33424F"};">${hist || "--"}</span></div>
 </td>`;
+    // listado de sociedades en silencio comercial (del "Detalle cuentas mes actual"), al final del cuadro
+    const silItems = parseCrmSilLines(c.silList);
+    const silListBlock = !silItems.length ? "" : `
+<div style="border-top:1px dashed #D7E3F0;margin-top:12px;padding-top:10px;">
+<div style="color:#C0392B;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Sociedades en silencio comercial (${silItems.length})</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
+${silItems.map((it) => {
+  const nombre = escapeHtml(it.nombre);
+  const link = it.cuit
+    ? `<a href="https://vademecum.dcac.ar/?cuit=${encodeURIComponent(it.cuit)}" target="_blank" style="color:#2E6DA4;text-decoration:underline;">${nombre}</a>`
+    : nombre;
+  return `<tr><td style="padding:4px 0;font-size:12px;color:#33424F;border-bottom:1px solid #EDEFF2;">${link}</td>` +
+    `<td align="right" style="padding:4px 0;font-size:10px;color:#8A97A3;border-bottom:1px solid #EDEFF2;white-space:nowrap;">${it.fecha ? "asignada " + it.fecha : ""}</td></tr>`;
+}).join("\n")}
+</table>
+</div>`;
     crmBlock = `<tr><td style="padding:14px 28px 4px 28px;">
 <table role="presentation" width="100%"><tr>
 <td style="background-color:#F5F9FD;border:1px solid #D7E3F0;border-radius:10px;padding:14px;">
@@ -1389,7 +1498,7 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
 ${col("Cuentas autogeneradas", c.auto, c.autoH)}
 ${col("Cuentas enviadas", c.env, c.envH, null, true)}
 ${col("Silencio comercial", c.sil, c.silH, silColor(c.sil), true)}
-</tr></table>
+</tr></table>${silListBlock}
 </td>
 </tr></table>
 </td></tr>`;
@@ -1936,6 +2045,8 @@ function restoreState(state) {
   const crm = state.crm || {};
   setv("crm_auto", crm.auto); setv("crm_env", crm.env); setv("crm_sil", crm.sil);
   setv("crm_autoH", crm.autoH); setv("crm_envH", crm.envH); setv("crm_silH", crm.silH);
+  document.getElementById("crm_silList").value = crm.silList || "";
+  updateCrmSilCheck();
 
   document.getElementById("asociadosWrap").innerHTML = "";
   (state.asociados || []).forEach((a) => renderAsociadoRow(a));

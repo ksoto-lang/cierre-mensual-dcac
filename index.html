@@ -228,6 +228,10 @@
             <div><label>Enviadas (histórico)</label><input type="text" id="crm_envH"></div>
             <div><label>Silencio comercial (histórico)</label><input type="text" id="crm_silH"></div>
           </div>
+          <label>Sociedades en silencio comercial (mes)</label>
+          <textarea id="crm_silList" rows="4" placeholder="Una por línea. Ej: Grand Family SA — CUIT 30707711562 — asignada 29/09/2026"></textarea>
+          <div class="hint">Se completa sola con las cuentas en estado NUEVO del listado "Detalle cuentas mes actual". Si una línea tiene CUIT, en el mail queda linkeada al Vademécum. Vacío = no se muestra el listado.</div>
+          <div id="crmSilCheck" class="status-box" style="display:none;"></div>
         </div>
       </div>
     </details>

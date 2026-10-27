@@ -91,6 +91,24 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       problems.push("aparece la tarjeta de CRM pero el PDF no tiene hoja de CRM");
     }
 
+    // Regresión 8: sociedades en silencio comercial — la cantidad del listado "Detalle cuentas mes actual"
+    // (estado NUEVO, contadas directo del texto del PDF) = Silencio Comercial del mes = líneas en el mail
+    const detPage = pages.find((p) => /Detalle\s+cuentas\s+mes\s+actual/i.test(p.text));
+    if (detPage && crmPage) {
+      let seg = detPage.text.slice(detPage.text.search(/Detalle\s+cuentas\s+mes\s+actual/i));
+      const fin = seg.search(/Detalle\s+cuentas\s+hist/i);
+      if (fin > 0) seg = seg.slice(0, fin);
+      const nuevosPdf = (seg.match(/\bNUEVO\b/g) || []).length;
+      const silMes = ((crmPage.text.split(/HIST[ÓO]RICO/i)[0].match(/Silencio\s+Comercial\s+(\d+)\s*\(/i)) || [])[1];
+      const lineas = String(state.crm.silList || "").split("\n").filter((l) => l.trim()).length;
+      if (lineas !== nuevosPdf) problems.push(`silencio comercial: el listado del PDF tiene ${nuevosPdf} en NUEVO y la webapp cargó ${lineas}`);
+      if (silMes !== undefined && +silMes !== nuevosPdf) problems.push(`silencio comercial: la hoja de CRM dice ${silMes} y el listado tiene ${nuevosPdf} (no coinciden en el PDF)`);
+      const enMail = (html.match(/Sociedades en silencio comercial \((\d+)\)/) || [])[1];
+      if (nuevosPdf && +enMail !== nuevosPdf) problems.push(`silencio comercial: el mail lista ${enMail || 0} y deberían ser ${nuevosPdf}`);
+    } else if (/Sociedades en silencio comercial/.test(html)) {
+      problems.push("aparece el listado de silencio comercial pero el PDF no tiene 'Detalle cuentas mes actual'");
+    }
+
     // Regresión 5: %CCC por asociado nunca como fracción ("0,79" debe quedar 79) ni mayor a 100
     state.asociados.forEach((a, i) => {
       const v = parseFloat(String(a.ccc || "").replace(",", "."));
