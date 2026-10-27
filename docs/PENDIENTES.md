@@ -28,8 +28,8 @@ Preguntas para Karli: ¿en qué hoja del PDF aparece (si es que sale de ahí)? �
 - En la hoja de CRM la leyenda del gráfico dice "Cuentas Autogestionadas" y las tarjetas "Cuentas Autogeneradas": avisar para unificar en el Power BI.
 
 ## 4c. Mail en celular
-- Con el ancho fluido, todo entra en 375px salvo las tablas de 7 columnas (Actividad por unidad de negocio y Resultado comercial por asociado), que piden ~575px.
-  Gmail achica el mail para que entre. Si se quiere que se lea grande en el celu, habría que rediseñar esas tablas (propuesta pendiente de OK de Karli).
+- Resuelto el 27/10/2026: el mail entra en ~340px. Queda: oficinas con tabla de asociados piden ~370px (en celulares chicos Gmail lo achica un poco).
+  Para bajarlo habría que sacar el texto "vs Sep 25" de cada celda y ponerlo una sola vez como referencia arriba de la tabla (pendiente de OK de Karli).
 
 ## 5. Housekeeping
 - Reconciliar la plantilla del Proyecto de claude.ai (`diseno_entre_rios_junio2026_v6.html` en las instrucciones vs `diseno_entre_rios_julio2026_v7.html` en los documentos). Si la webapp es el camino oficial, actualizar el Proyecto con el orden de columnas vigente.

@@ -68,4 +68,7 @@ hace falta "Cabezas No Concretadas" por comercial (no está en la tabla). Ver PE
 - Footer: CTA "Ver reporte completo" (degradé) + tarjetas Pulso Comercial (verde `#1a6b3c`, logo `pulse.dcac.ar/logo.png`) y Vademécum (`vademecum.dcac.ar`).
 - Compatibilidad de email: estilos inline, tablas, sin `background-image` ni `position:absolute`, sin CSS posicional. Ancho máximo 640px pero fluido
   (`width="100%"` + `max-width`), nunca `width="640"` fijo en tablas: en el celu se corta. Foto de arriba: banner 640x220, `width:100%;height:auto`, sin `max-height`.
-- En celular, la tabla "Actividad por unidad de negocio" (7 columnas) necesita ~575px: Gmail achica el mail entero para que entre (ver PENDIENTES).
+- **El mail tiene que entrar en ~340px** (celular) sin que Gmail lo achique: si lo achica, la foto queda más angosta que el resto. Márgenes laterales 16px,
+  celdas de las tablas de 7 columnas con 2px de padding y títulos abreviados (OPER., OFREC., %CCC/CCC %, VEND., COMPR., SOC./REND. %), tarjetas de
+  Sociedades/Nuevas/SACs como bloques inline-block con max-width (se apilan solas). Sin media queries (Gmail las borra al pegar).
+  Oficinas con tabla de asociados: ~370px (límite sin sacar los "vs Sep 25").

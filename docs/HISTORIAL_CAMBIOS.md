@@ -61,6 +61,11 @@ y este archivo se actualiza en el mismo commit.
 31. **Sociedades en silencio comercial** al final del cuadro de CRM: se toman del listado "Detalle cuentas mes actual" (estado NUEVO), linkeadas al
     Vademécum por CUIT y con fecha de asignación. Campo editable en el paso 5 con control: la cantidad del listado tiene que coincidir con el Silencio
     Comercial del mes (aviso en verde/rojo en el formulario, nunca en el mail). El test verifica la coincidencia.
+32. Fix **foto cortada en Gmail del celular** (captura de Karli, iPhone): el mail medía ~600px de mínimo y Gmail lo achicaba, dejando la foto más angosta
+    que el resto. Ahora entra en ~340px: márgenes laterales 16px; tablas de 7 columnas con celdas angostas, letras 1-2 pt más chicas y títulos
+    abreviados (OPER., OFREC., VEND., COMPR., REND. %); sin el cuadradito de color en Categoría (la barra ya identifica la unidad); tarjetas
+    Sociedades/Nuevas/SACs fluidas (lado a lado en compu, apiladas en el celu); recuadros de variación del hero que bajan de renglón.
+    Oficinas con tabla de asociados necesitan ~370px (la columna más angosta posible con "vs Sep 25"). Test con controles de ancho.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

@@ -67,7 +67,8 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
     // Regresión 3: tabla de asociados (solo oficinas): orden de columnas y fila TOTAL
     if (state.tipo === "oficina" && state.asociados.length) {
       const blk = html.slice(html.indexOf("Resultado comercial por asociado"));
-      const hdr = ["OPERADAS", "OFRECIDAS", "% CCC", "VENDIDAS", "COMPRADAS", "SOC."].map((t) => blk.indexOf(">" + t + "</td>"));
+      // títulos abreviados desde oct 2026 para que la tabla entre en el celular (el orden no cambia)
+      const hdr = ["OPER.", "OFREC.", "% CCC", "VEND.", "COMPR.", "SOC."].map((t) => blk.indexOf(">" + t + "</td>"));
       if (hdr.some((i) => i < 0) || hdr.some((v, i) => i && v < hdr[i - 1])) problems.push("orden de columnas de 'Resultado comercial por asociado' incorrecto (debe ser Operadas, Ofrecidas, %CCC, Vendidas, Compradas, Soc.)");
       if (!/>TOTAL<\/td>/.test(html)) problems.push("falta la fila TOTAL en la tabla de asociados");
     } else if (/Resultado comercial por asociado/.test(html)) {
@@ -129,6 +130,12 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
 
     // Regresión 8: variación vacía en las tablas -> no se muestra "—" con "vs Sep 25" / "vs target"
     if (/—<\/span><div style="color:#9AA7B2;[^"]*">vs /.test(html)) problems.push('aparece "— vs ..." en una tabla: si la variación está vacía no debe mostrarse nada');
+
+    // Regresión 9: reglas de ancho para que el mail entre en el celular sin que Gmail lo achique (y corte la foto):
+    // márgenes laterales chicos, tarjetas fluidas (inline-block), tablas de 7 columnas con celdas angostas
+    if (/padding:\d+px 28px/.test(html)) problems.push("volvieron los márgenes laterales de 28px: en el celu el mail no entra");
+    if (/<td style="width:(31\.3|48\.5)%;background-color:#EAF2FB/.test(html)) problems.push("las tarjetas de Sociedades/Nuevas/SACs volvieron a ancho fijo: en el celu no se apilan");
+    if (/padding:1[23]px 10px/.test(html)) problems.push("las tablas de 7 columnas volvieron a celdas anchas (10px): en el celu no entran");
 
     // Regresión 7: el mail se adapta al celular (sin tablas de ancho fijo) y la foto de arriba no se deforma
     if (/<table[^>]*width="64[02]"/.test(html)) problems.push("el mail tiene una tabla de ancho fijo (640/642): en el celu se corta");

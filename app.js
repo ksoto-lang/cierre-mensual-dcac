@@ -402,7 +402,7 @@ function buildRecuadroBlock(r) {
   const link = r.link ? (driveIdFromLink(r.link) ? driveExportXlsx(r.link) : r.link) : "";
   const { text: marked, tokens } = linkifySocieties(r.contenido || "");
   const bodyHtml = applyLinkTokens(contentToHtml(marked), tokens);
-  return `<tr><td style="padding:16px 28px 4px 28px;">
+  return `<tr><td style="padding:16px 16px 4px 16px;">
 <table role="presentation" width="100%"><tr><td style="background-color:${c.bg};${borderStyle}border-radius:10px;padding:16px 18px;">
 ${r.titulo ? `<div style="color:${c.title};font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">${r.icono ? escapeHtml(r.icono) + " " : ""}${escapeHtml(r.titulo)}</div>` : ""}
 <div style="font-size:${r.color === "dark" ? "14" : "13"}px;color:${c.text};margin-top:9px;line-height:${r.color === "dark" ? "1.65" : "1.6"};">
@@ -1232,7 +1232,7 @@ function barWidth(operadas, totalOperadas) {
   const v = parseFloat(String(operadas).replace(/\./g, "").replace(",", "."));
   const max = parseFloat(String(totalOperadas).replace(/\./g, "").replace(",", "."));
   if (!v || !max) return 0; // sin operadas: barra vacía
-  return Math.max(1, Math.round((v / max) * 60)); // mínimo 1px para que una unidad chica (ej. MAG) se vea
+  return Math.max(1, Math.round((v / max) * 48)); // mínimo 1px para que una unidad chica (ej. MAG) se vea
 }
 function linesToItems(text) {
   return text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -1395,42 +1395,45 @@ function buildEmailHtml(s) {
     if (u.compradas !== "--") totalCompradas += parseFloat(String(u.compradas).replace(/\./g, "").replace(",", ".")) || 0;
 
     // barra = peso de la unidad en Operadas, proporcional a la unidad de mayor volumen del mes; va debajo del nombre
-    return `<tr style="${bgAlt}"><td style="padding:12px 10px;font-size:14px;${borderBottom}${bgAlt}color:#33424F;">` +
-      `<div style="white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;background-color:${uDef.color};border-radius:2px;margin-right:7px;"></span>${uDef.label}</div>` +
-      `<table cellpadding="0" cellspacing="0" style="margin:6px 0 0 0;"><tr><td style="width:60px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
+    return `<tr style="${bgAlt}"><td style="padding:10px 2px 10px 7px;font-size:12px;${borderBottom}${bgAlt}color:#33424F;">` +
+      `<div>${uDef.label}</div>` +
+      `<table cellpadding="0" cellspacing="0" style="margin:6px 0 0 0;"><tr><td style="width:48px;background-color:#E4E8EB;border-radius:4px;"><div style="width:${bw}px;height:6px;background-color:${uDef.color};border-radius:4px;"></div></td></tr></table>` +
       `</td>` +
-      `<td align="center" style="padding:12px 10px;${borderBottom}background-color:#F5F9FD;">` +
-      `<div style="font-size:15px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
-      (s.omitVsUnidades || !hasVar(u.opVar) ? "" : `<div style="font-size:10px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
+      `<td align="center" style="padding:10px 2px;${borderBottom}background-color:#F5F9FD;">` +
+      `<div style="font-size:13px;font-weight:800;color:#152C42;">${u.operadas}</div>` +
+      (s.omitVsUnidades || !hasVar(u.opVar) ? "" : `<div style="font-size:9px;margin-top:3px;">${varSmall(u.opVar, u.opSign)}${vsSpanUnidades}</div>`) +
       `</td>` +
-      `<td align="center" style="padding:12px 10px;${borderBottom}">` +
-      `<div style="font-size:14px;color:#33424F;">${u.ofrecidas}</div>` +
-      (u.ofrecidas !== "--" && !s.omitVsUnidades && hasVar(u.ofVar) ? `<div style="font-size:10px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)}${vsSpanUnidades}</div>` : "") +
+      `<td align="center" style="padding:10px 2px;${borderBottom}">` +
+      `<div style="font-size:13px;color:#33424F;">${u.ofrecidas}</div>` +
+      (u.ofrecidas !== "--" && !s.omitVsUnidades && hasVar(u.ofVar) ? `<div style="font-size:9px;margin-top:3px;">${varSmall(u.ofVar, u.ofSign)}${vsSpanUnidades}</div>` : "") +
       `</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.compradas}</td>` +
-      `<td align="center" style="padding:12px 10px;font-size:14px;${borderBottom}color:#33424F;">${u.rendim === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.rendim + "%"}</td></tr>`;
+      `<td align="center" style="padding:10px 2px;font-size:13px;font-weight:bold;${borderBottom}color:${cc.color};">${u.ccc === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.ccc + "%"}</td>` +
+      `<td align="center" style="padding:10px 2px;font-size:13px;${borderBottom}color:#33424F;">${u.vendidas}</td>` +
+      `<td align="center" style="padding:10px 2px;font-size:13px;${borderBottom}color:#33424F;">${u.compradas}</td>` +
+      `<td align="center" style="padding:10px 2px;font-size:13px;${borderBottom}color:#33424F;">${u.rendim === "--" ? '<span style="color:#B4BEC7;">--</span>' : u.rendim + "%"}</td></tr>`;
   }).join("");
 
-  const totalRow = `<tr><td style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">Total ${isOficina ? "oficina" : tituloHeader}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:16px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:14px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td>` +
-    `<td align="center" style="padding:13px 10px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td></tr>`;
+  const totalRow = `<tr><td style="padding:12px 2px 12px 7px;font-size:12px;font-weight:bold;background-color:#152C42;color:#fff;">Total ${isOficina ? "oficina" : tituloHeader}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td></tr>`;
 
   // ---- cards: sociedades / nuevas / sacs ----
-  const cardsWidth = s.sacsEnabled ? "31.3%" : "48.5%";
+  // Tarjetas "fluidas": bloques inline-block con ancho máximo. En compu entran lado a lado (3 o 2 por fila);
+  // en el celular cada una ocupa el ancho entero y se apilan solas (sin media queries, que Gmail borra al pegar).
+  const cardMax = s.sacsEnabled ? "202px" : "304px";
+  const cardOpen = (bg) => `<div style="display:inline-block;vertical-align:top;width:100%;max-width:${cardMax};font-size:14px;text-align:left;"><div style="margin:0 4px 8px 4px;background-color:${bg};border-radius:10px;padding:14px;">`;
+  const cardClose = `</div></div>`;
   const nuevasBreakdown = ["inv", "cria", "fae"]
     .filter((k) => s.nuevas[k] && s.nuevas[k] !== "0")
     .map((k) => `${k.toUpperCase() === "CRIA" ? "CRÍA" : k.toUpperCase()} ${s.nuevas[k]}`)
     .join(" · ");
 
-  const cardsBlock = `<tr><td style="padding:24px 28px 4px 28px;">
-<table role="presentation" width="100%"><tr>
-<td style="width:${cardsWidth};background-color:#EAF2FB;border-radius:10px;padding:14px;vertical-align:top;">
+  const cardsBlock = `<tr><td style="padding:24px 12px 0 12px;font-size:0;text-align:center;">
+${cardOpen("#EAF2FB")}
 <div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Sociedades operando</div>
 <table role="presentation" width="100%" style="margin-top:9px;"><tr>
 <td style="width:50%;vertical-align:top;">
@@ -1444,19 +1447,16 @@ ${hasVar(s.sociedades.mesVar) ? `<div style="font-size:10px;color:${String(s.soc
 ${hasVar(s.sociedades.ytdVar) ? `<div style="font-size:10px;color:${String(s.sociedades.ytdVar).trim().startsWith("-") ? "#C0392B" : "#1E8449"};font-weight:bold;margin-top:1px;">${s.sociedades.ytdVar}</div><div style="font-size:10px;color:#9AA7B2;white-space:nowrap;">${vsYtdLabel}</div>` : ""}
 </td>
 </tr></table>
-</td><td style="width:3%;"></td>
-<td style="width:${cardsWidth};background-color:#EAF7EE;border-radius:10px;padding:14px;vertical-align:top;">
+${cardClose}${cardOpen("#EAF7EE")}
 <div style="color:#1E8449;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Nuevas sociedades</div>
 <div style="color:#152C42;font-size:23px;font-weight:800;margin-top:2px;">${s.nuevas.cant || "0"} <span style="font-size:12px;font-weight:bold;color:#1E8449;">CCC ${s.nuevas.ccc || "--"}%</span></div>
 ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">${nuevasBreakdown}</div>` : ""}
-</td>${s.sacsEnabled ? `<td style="width:3%;"></td>
-<td style="width:${cardsWidth};background-color:#FDF6E3;border-radius:10px;padding:14px;vertical-align:top;">
+${cardClose}${s.sacsEnabled ? `${cardOpen("#FDF6E3")}
 <div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">SACS aprob.</div>
 <div style="color:#152C42;font-size:20px;font-weight:800;margin-top:2px;">${s.sacs.apr || "0"}/${s.sacs.env || "0"} <span style="font-size:11px;color:#B9770E;font-weight:normal;">enviados</span></div>
 <div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;margin-top:9px;">JD otorgadas</div>
 <div style="color:#152C42;font-size:16px;font-weight:800;margin-top:2px;">${s.sacs.jdOtor || "--"} / ${s.sacs.jdSol || "--"} <span style="font-size:11px;color:#9C7A2E;font-weight:normal;">JD Solicitadas</span></div>
-</td>` : ""}
-</tr></table>
+${cardClose}` : ""}
 </td></tr>`;
 
   // ---- gestión de cuentas (CRM): solo si la casilla está tildada ----
@@ -1490,7 +1490,7 @@ ${silItems.map((it) => {
 }).join("\n")}
 </table>
 </div>`;
-    crmBlock = `<tr><td style="padding:14px 28px 4px 28px;">
+    crmBlock = `<tr><td style="padding:14px 16px 4px 16px;">
 <table role="presentation" width="100%"><tr>
 <td style="background-color:#F5F9FD;border:1px solid #D7E3F0;border-radius:10px;padding:14px;">
 <div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">CRM</div>
@@ -1541,25 +1541,25 @@ ${col("Silencio comercial", c.sil, c.silH, silColor(c.sil), true)}
       const cc = cccColor(a.ccc);
       const bb = "border-bottom:1px solid #EDEFF2;";
       const altBg = alt ? "background-color:#FAFBFC;" : "";
-      const ofrVarLine = hasVar(a.ofrecidasVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)}${vsSpanAsoc}</div>` : "";
-      const opVarLine = hasVar(a.operadasVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)}${vsSpanAsoc}</div>` : "";
-      const targetVarLine = hasVar(a.targetVar) ? `<div style="font-size:10px;margin-top:3px;">${varSmall(a.targetVar, a.targetSign)}${vsSpanTarget}</div>` : "";
-      const socVarLine = hasVar(a.socVar) && !s.omitVsAsociados ? `<div style="font-size:10px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")}${vsSpanAsoc}</div>` : "";
-      return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:12px 10px;font-size:14px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
-<td align="center" style="padding:12px 10px;${bb}background-color:#EAF2FB;">
-<div style="font-size:15px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
+      const ofrVarLine = hasVar(a.ofrecidasVar) && !s.omitVsAsociados ? `<div style="font-size:9px;margin-top:2px;">${varSmall(a.ofrecidasVar, a.ofrecidasSign)}${vsSpanAsoc}</div>` : "";
+      const opVarLine = hasVar(a.operadasVar) && !s.omitVsAsociados ? `<div style="font-size:9px;margin-top:2px;">${varSmall(a.operadasVar, a.operadasSign)}${vsSpanAsoc}</div>` : "";
+      const targetVarLine = hasVar(a.targetVar) ? `<div style="font-size:9px;margin-top:3px;">${varSmall(a.targetVar, a.targetSign)}${vsSpanTarget}</div>` : "";
+      const socVarLine = hasVar(a.socVar) && !s.omitVsAsociados ? `<div style="font-size:9px;margin-top:2px;">${varSmall(a.socVar, a.socSign, "")}${vsSpanAsoc}</div>` : "";
+      return `<tr${alt ? ' style="background-color:#FAFBFC;"' : ""}><td style="padding:10px 2px 10px 7px;font-size:12px;${bb}${altBg}color:#33424F;">${escapeHtml(a.nombre)}</td>
+<td align="center" style="padding:10px 2px;${bb}background-color:#EAF2FB;">
+<div style="font-size:13px;font-weight:800;color:#152C42;">${a.operadas || "--"}</div>
 ${opVarLine}
 ${targetVarLine}
 </td>
-<td align="center" style="padding:12px 10px;${bb}background-color:#F5F9FD;">
-<div style="font-size:15px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
+<td align="center" style="padding:10px 2px;${bb}background-color:#F5F9FD;">
+<div style="font-size:13px;font-weight:800;color:#152C42;">${a.ofrecidas || "--"}</div>
 ${ofrVarLine}
 </td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
-<td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.vendidas || "--"}</td>
-<td align="center" style="padding:12px 10px;font-size:14px;${bb}color:#33424F;">${a.compradas || "--"}</td>
-<td align="center" style="padding:12px 10px;${bb}">
-<div style="font-size:15px;font-weight:800;color:#152C42;">${a.soc || "--"}</div>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;${bb}color:${cc.color};">${a.ccc ? a.ccc + "%" : "--"}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;${bb}color:#33424F;">${a.vendidas || "--"}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;${bb}color:#33424F;">${a.compradas || "--"}</td>
+<td align="center" style="padding:10px 2px;${bb}">
+<div style="font-size:13px;font-weight:800;color:#152C42;">${a.soc || "--"}</div>
 ${socVarLine}
 </td></tr>`;
     }).join("");
@@ -1572,26 +1572,26 @@ ${socVarLine}
     const sumSocAsoc = asociadosFinal.reduce((acc, a) => acc + parseNum(a.soc), 0);
     const sumCccAsoc = sumOfrecidas > 0 ? Math.round((sumOperadas / sumOfrecidas) * 100) : null;
     const totalRow = `<tr style="background-color:#152C42;">
-<td style="padding:12px 10px;font-size:13px;font-weight:800;color:#ffffff;">TOTAL</td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumOperadas)}</td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumOfrecidas)}</td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${sumCccAsoc !== null ? sumCccAsoc + "%" : "--"}</td>
-<td align="center" style="padding:12px 10px;font-size:14px;font-weight:800;color:#ffffff;">${fmtNum(sumVendidasAsoc)}</td>
-<td align="center" style="padding:12px 10px;font-size:14px;font-weight:800;color:#ffffff;">${fmtNum(sumCompradasAsoc)}</td>
-<td align="center" style="padding:12px 10px;font-size:15px;font-weight:800;color:#ffffff;">${fmtNum(sumSocAsoc)}</td>
+<td style="padding:10px 2px 10px 7px;font-size:13px;font-weight:800;color:#ffffff;">TOTAL</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${fmtNum(sumOperadas)}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${fmtNum(sumOfrecidas)}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${sumCccAsoc !== null ? sumCccAsoc + "%" : "--"}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${fmtNum(sumVendidasAsoc)}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${fmtNum(sumCompradasAsoc)}</td>
+<td align="center" style="padding:10px 2px;font-size:13px;font-weight:800;color:#ffffff;">${fmtNum(sumSocAsoc)}</td>
 </tr>`;
 
-    asociadosBlock = `<tr><td style="padding:20px 28px 4px 28px;">
+    asociadosBlock = `<tr><td style="padding:20px 16px 4px 16px;">
 <div style="color:#152C42;font-size:14px;font-weight:800;margin-bottom:12px;">Resultado comercial por asociado</div>
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
 <tr style="background-color:#F7F9FA;">
-<td style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">ASOCIADO</td>
-<td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;background-color:#F5F9FD;">OFRECIDAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">% CCC</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">SOC.</td>
+<td style="padding:9px 2px 9px 7px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">ASOCIADO</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#152C42;font-weight:bold;letter-spacing:0;background-color:#EAF2FB;">OPER.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;background-color:#F5F9FD;">OFREC.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">% CCC</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">VEND.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">COMPR.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">SOC.</td>
 </tr>
 ${rows}
 ${totalRow}
@@ -1605,14 +1605,14 @@ ${totalRow}
   // ---- ensamblado final ----
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cierre Mensual - ${escapeHtml(tituloHeader)} - ${s.mes} ${s.anio}</title></head>
 <body style="margin:0;padding:0;background-color:#F1F3F6;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:24px 6px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1F3F6;padding:24px 4px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:642px;background-color:#152C42;border-radius:15px;"><tr><td style="padding:1px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(21,44,66,0.08);">
 
 <tr><td style="background-color:#ffffff;">
 <img src="data:${headerImgMime};base64,${headerImgData}" width="640" alt="" style="display:block;width:100%;max-width:640px;height:auto;border:0;">
 </td></tr>
-<tr><td style="background-color:#152C42;padding:22px 28px 4px 28px;text-align:center;">
+<tr><td style="background-color:#152C42;padding:22px 16px 4px 16px;text-align:center;">
 <img src="data:image/png;base64,${A.logo}" width="34" height="35" alt="dCaC" style="display:block;margin:0 auto 6px auto;">
 <div style="color:#9FC5E8;font-size:11px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;">Cierre Mensual</div>
 <div style="color:#FFFFFF;font-size:22px;font-weight:800;margin-top:8px;">${escapeHtml(tituloHeader)}</div>
@@ -1621,32 +1621,28 @@ ${totalRow}
 </tr></table>
 </td></tr>
 
-<tr><td style="background-color:#152C42;padding:24px 28px 26px 28px;">
+<tr><td style="background-color:#152C42;padding:24px 16px 26px 16px;">
 <table role="presentation" width="100%"><tr>
 <td style="width:54%;vertical-align:top;">
 <div style="color:#9FC5E8;font-size:11px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Cabezas operadas</div>
 <div style="color:#FFFFFF;font-size:42px;font-weight:800;line-height:1.1;margin-top:3px;">${s.hero.operadas || "--"}</div>
-<table cellpadding="0" cellspacing="0" style="margin-top:8px;"><tr>
-${varTagInline(s.hero.varAnio, s.hero.varAnioSigno, vsLabel)}
-<td style="width:6px;"></td>
-${varTagInline(s.hero.varTarget, s.hero.varTargetSigno, "vs target")}
-</tr></table>
+<div style="display:inline-block;vertical-align:top;margin:8px 6px 0 0;"><table cellpadding="0" cellspacing="0"><tr>${varTagInline(s.hero.varAnio, s.hero.varAnioSigno, vsLabel)}</tr></table></div><div style="display:inline-block;vertical-align:top;margin:8px 0 0 0;"><table cellpadding="0" cellspacing="0"><tr>${varTagInline(s.hero.varTarget, s.hero.varTargetSigno, "vs target")}</tr></table></div>
 </td>
 <td style="width:2%;"></td>
 <td style="width:44%;vertical-align:top;">
 <table role="presentation" width="100%" style="background-color:#233B53;border:1px solid #35506B;border-radius:10px;"><tr>
-${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
+${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;padding:12px 6px;">
+<div style="color:#9FC5E8;font-size:9px;font-weight:bold;letter-spacing:.02em;text-transform:uppercase;">% CCC</div>
 <div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
 <div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
-</td>` : `<td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">Rendimiento</div>
+</td>` : `<td style="width:50%;vertical-align:top;text-align:center;padding:12px 6px;">
+<div style="color:#9FC5E8;font-size:9px;font-weight:bold;letter-spacing:.02em;text-transform:uppercase;">Rendimiento</div>
 <div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.rendim || "--"}%</div>
 <div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.rendimVar, s.hero.rendimSigno, " p.p.")}</div>
 </td>
 <td style="width:1px;background-color:#35506B;"></td>
-<td style="width:50%;vertical-align:top;text-align:center;padding:12px 8px;">
-<div style="color:#9FC5E8;font-size:10px;font-weight:bold;letter-spacing:.05em;text-transform:uppercase;">% CCC</div>
+<td style="width:50%;vertical-align:top;text-align:center;padding:12px 6px;">
+<div style="color:#9FC5E8;font-size:9px;font-weight:bold;letter-spacing:.02em;text-transform:uppercase;">% CCC</div>
 <div style="color:#FFFFFF;font-size:24px;font-weight:800;margin-top:3px;">${s.hero.ccc || "--"}%</div>
 <div style="font-size:11px;font-weight:bold;margin-top:2px;">${varSmallOnDark(s.hero.cccVar, s.hero.cccSigno, " p.p.")}</div>
 </td>`}
@@ -1655,17 +1651,17 @@ ${isRepresentante ? `<td style="width:100%;vertical-align:top;text-align:center;
 </tr></table>
 </td></tr>
 
-<tr><td style="padding:26px 28px 4px 28px;">
+<tr><td style="padding:26px 16px 4px 16px;">
 <div style="color:#152C42;font-size:14px;font-weight:800;margin-bottom:12px;">Actividad por unidad de negocio</div>
 <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:10px;overflow:hidden;background-color:#FAFBFC;border:1px solid #EEF1F3;">
 <tr style="background-color:#F7F9FA;">
-<td style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">CATEGORÍA</td>
-<td align="center" style="padding:10px;font-size:10px;color:#152C42;font-weight:bold;letter-spacing:.04em;background-color:#EAF2FB;">OPERADAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">OFRECIDAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">CCC %</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">VENDIDAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">COMPRADAS</td>
-<td align="center" style="padding:10px;font-size:10px;color:#8A97A3;font-weight:bold;letter-spacing:.04em;">RENDIM %</td>
+<td style="padding:9px 2px 9px 7px;font-size:9px;color:#152C42;font-weight:bold;letter-spacing:0;background-color:#EAF2FB;">CATEGORÍA</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#152C42;font-weight:bold;letter-spacing:0;background-color:#EAF2FB;">OPER.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">OFREC.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">CCC %</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">VEND.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">COMPR.</td>
+<td align="center" style="padding:9px 2px;font-size:9px;color:#8A97A3;font-weight:bold;letter-spacing:0;">REND. %</td>
 </tr>
 ${unidadRows}
 ${totalRow}
@@ -1677,7 +1673,7 @@ ${crmBlock}
 ${asociadosBlock}
 ${recuadrosBlock}
 
-<tr><td style="padding:24px 28px 30px 28px;">
+<tr><td style="padding:24px 16px 30px 16px;">
 <a href="${s.linkPdf || "#"}" target="_blank" style="display:block;text-align:center;background-color:#2E6DA4;background-image:linear-gradient(135deg,#3E82C4,#1B4F8C);color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:16px 0;border-radius:14px;letter-spacing:.01em;box-shadow:0 6px 16px rgba(27,79,140,0.32);">📄&nbsp;&nbsp;Ver reporte completo&nbsp;&nbsp;→</a>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;"><tr>
