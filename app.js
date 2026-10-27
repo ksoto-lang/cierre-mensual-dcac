@@ -1128,11 +1128,11 @@ function varSmallOnDark(value, sign, suffix) {
   const clean = String(value).replace(/^[+-]/, "");
   return `<span style="font-weight:bold;color:${color};">${arrow}${clean}${suffix === undefined ? "%" : suffix}</span>`;
 }
-function barWidth(operadas, maxOperadas) {
+function barWidth(operadas, totalOperadas) {
   const v = parseFloat(String(operadas).replace(/\./g, "").replace(",", "."));
-  const max = parseFloat(String(maxOperadas).replace(/\./g, "").replace(",", "."));
-  if (!v || !max) return 1;
-  return Math.max(1, Math.round((v / max) * 60));
+  const max = parseFloat(String(totalOperadas).replace(/\./g, "").replace(",", "."));
+  if (!v || !max) return 0; // sin operadas: barra vacía
+  return Math.max(1, Math.round((v / max) * 60)); // mínimo 1px para que una unidad chica (ej. MAG) se vea
 }
 function linesToItems(text) {
   return text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -1274,10 +1274,11 @@ function buildEmailHtml(s) {
   const headerImgMime = (s.headerImage && s.headerImage.mime) ? s.headerImage.mime : "image/jpeg";
 
   // ---- unidades ----
-  const maxOperadas = Math.max(
-    ...Object.values(s.unidades).map((u) => parseFloat(String(u.operadas).replace(/\./g, "").replace(",", ".")) || 0),
-    1
-  );
+  // Barra de cada unidad = su % sobre el total de cabezas operadas de las unidades (entre todas suman el 100%).
+  // Antes era proporcional a la unidad más grande, que salía llena y parecía el total.
+  const sumOperadasUnidades = Object.values(s.unidades)
+    .filter((u) => !u.sinActividad)
+    .reduce((acc, u) => acc + (parseFloat(String(u.operadas).replace(/\./g, "").replace(",", ".")) || 0), 0) || 1;
   let totalOperadas = 0, totalOfrecidas = 0, totalVendidas = 0, totalCompradas = 0;
 
   const unidadRows = UNIDADES.map((uDef, idx) => {
@@ -1285,7 +1286,7 @@ function buildEmailHtml(s) {
     const bgAlt = idx % 2 === 1 ? "background-color:#FAFBFC;" : "";
     const borderBottom = idx < UNIDADES.length - 1 ? "border-bottom:1px solid #EDEFF2;" : "";
     const cc = cccColor(u.ccc);
-    const bw = u.sinActividad ? 1 : barWidth(u.operadas, maxOperadas);
+    const bw = u.sinActividad ? 0 : barWidth(u.operadas, sumOperadasUnidades);
 
     totalOperadas += parseFloat(String(u.operadas).replace(/\./g, "").replace(",", ".")) || 0;
     if (u.ofrecidas !== "--") totalOfrecidas += parseFloat(String(u.ofrecidas).replace(/\./g, "").replace(",", ".")) || 0;
