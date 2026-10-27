@@ -1376,7 +1376,7 @@ ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">$
     crmBlock = `<tr><td style="padding:14px 28px 4px 28px;">
 <table role="presentation" width="100%"><tr>
 <td style="background-color:#F5F9FD;border:1px solid #D7E3F0;border-radius:10px;padding:14px;">
-<div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Gestión de cuentas <span style="color:#8A97A3;font-weight:normal;text-transform:none;">· mes actual</span></div>
+<div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">CRM</div>
 <table role="presentation" width="100%" style="margin-top:9px;"><tr>
 ${col("Cuentas autogeneradas", c.auto, c.autoH)}
 ${col("Cuentas enviadas", c.env, c.envH, null, true)}

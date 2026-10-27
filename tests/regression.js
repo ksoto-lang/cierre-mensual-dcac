@@ -74,19 +74,19 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       problems.push("aparece la tabla de asociados en un cierre que no es de oficina");
     }
 
-    // Regresión 4: tarjeta "Gestión de cuentas" (CRM) solo si el PDF trae esa hoja, con los valores tal cual,
+    // Regresión 4: tarjeta "CRM" solo si el PDF trae esa hoja, con los valores tal cual,
     // y se puede quitar destildando la casilla
     const crmPage = pages.find((p) => /Cuentas\s+Autogeneradas/i.test(p.text) && /Silencio\s+Comercial/i.test(p.text));
-    const hasCrmCard = (h) => /Gestión de cuentas/.test(h);
+    const hasCrmCard = (h) => /Cuentas autogeneradas/i.test(h);
     if (crmPage) {
-      if (!w.document.getElementById("crmEnabled").checked || !hasCrmCard(html)) problems.push("el PDF tiene hoja de CRM pero no aparece la tarjeta de Gestión de cuentas");
+      if (!w.document.getElementById("crmEnabled").checked || !hasCrmCard(html)) problems.push("el PDF tiene hoja de CRM pero no aparece la tarjeta de CRM");
       const autoMes = (crmPage.text.match(/Cuentas\s+Autogeneradas\s+([\d.,]+)/i) || [])[1];
       if (autoMes && state.crm.auto !== autoMes) problems.push(`Cuentas autogeneradas del mes: leyó "${state.crm.auto}", el PDF dice "${autoMes}"`);
       w.document.getElementById("crmEnabled").checked = false;
       if (hasCrmCard(w.buildEmailHtml(w.readState()))) problems.push("destildar la casilla de CRM no quita la tarjeta");
       w.document.getElementById("crmEnabled").checked = true;
     } else if (hasCrmCard(html) || state.crmEnabled) {
-      problems.push("aparece la tarjeta de Gestión de cuentas pero el PDF no tiene hoja de CRM");
+      problems.push("aparece la tarjeta de CRM pero el PDF no tiene hoja de CRM");
     }
 
     // Regresión 5: %CCC por asociado nunca como fracción ("0,79" debe quedar 79) ni mayor a 100

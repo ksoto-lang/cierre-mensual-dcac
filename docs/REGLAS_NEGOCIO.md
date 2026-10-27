@@ -16,7 +16,7 @@
 - Tablas de unidades y de asociados: el texto "vs {mes} {año-1}" / "vs target" va en su propio renglón, debajo del %. Si la variación está vacía,
   no se muestra nada (ni "—" ni el texto "vs ...") — pedido de Karli, 26/10/2026.
 
-- **Gestión de cuentas (CRM)**: tarjeta de ancho completo debajo de Sociedades / Nuevas / SACs. Aparece solo si el PDF trae la hoja de CRM
+- **CRM** (título de la tarjeta: "CRM"; antes "Gestión de cuentas"): tarjeta de ancho completo debajo de Sociedades / Nuevas / SACs. Aparece solo si el PDF trae la hoja de CRM
   (se reconoce por "Cuentas Autogeneradas" + "Silencio Comercial", porque su título es solo el nombre de la oficina/AC). Casilla en el paso 5 para quitarla.
   Muestra mes actual grande e histórico chico; los valores se copian tal cual del PDF (ej. "0%", "2 (33%)"), nunca se calculan.
   Definiciones (Karli, 20/10/2026): **Cuentas Autogeneradas (AU)** = sociedades traídas a la plataforma por el propio AC · **Cuentas Enviadas** = cuentas
