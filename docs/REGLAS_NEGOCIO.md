@@ -69,6 +69,6 @@ hace falta "Cabezas No Concretadas" por comercial (no está en la tabla). Ver PE
 - Compatibilidad de email: estilos inline, tablas, sin `background-image` ni `position:absolute`, sin CSS posicional. Ancho máximo 640px pero fluido
   (`width="100%"` + `max-width`), nunca `width="640"` fijo en tablas: en el celu se corta. Foto de arriba: banner 640x220, `width:100%;height:auto`, sin `max-height`.
 - **El mail tiene que entrar en ~340px** (celular) sin que Gmail lo achique: si lo achica, la foto queda más angosta que el resto. Márgenes laterales 16px,
-  celdas de las tablas de 7 columnas con 2px de padding y títulos abreviados (OPER., OFREC., %CCC/CCC %, VEND., COMPR., SOC./REND. %), tarjetas de
-  Sociedades/Nuevas/SACs como bloques inline-block con max-width (se apilan solas). Sin media queries (Gmail las borra al pegar).
+  celdas de las tablas de 7 columnas con 2px de padding y títulos abreviados (OPER., OFREC., %CCC/CCC %, VEND., COMPR., SOC./REND. %). Tarjetas:
+  Sociedades operando + Nuevas sociedades lado a lado arriba y SACs abajo a lo ancho, igual en compu y celular (Karli, 02/11/2026). Sin media queries (Gmail las borra al pegar).
   Oficinas con tabla de asociados: ~370px (límite sin sacar los "vs Sep 25").

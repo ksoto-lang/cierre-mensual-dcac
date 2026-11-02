@@ -1422,19 +1422,25 @@ function buildEmailHtml(s) {
     `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td></tr>`;
 
   // ---- cards: sociedades / nuevas / sacs ----
-  // Tarjetas "fluidas": bloques inline-block con ancho máximo. En compu entran lado a lado (3 o 2 por fila);
-  // en el celular cada una ocupa el ancho entero y se apilan solas (sin media queries, que Gmail borra al pegar).
-  const cardMax = s.sacsEnabled ? "202px" : "304px";
-  const cardOpen = (bg) => `<div style="display:inline-block;vertical-align:top;width:100%;max-width:${cardMax};font-size:14px;text-align:left;"><div style="margin:0 4px 8px 4px;background-color:${bg};border-radius:10px;padding:14px;">`;
-  const cardClose = `</div></div>`;
+  // Mismo diseño en compu y en celular (el mail no puede cambiar según la pantalla: Gmail borra los media
+  // queries al pegar), con el ancho alineado al cuadro de CRM.
+  const card = (bg, inner, first) => `<tr><td style="padding:${first ? "24px" : "10px"} 16px 0 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="background-color:${bg};border-radius:10px;padding:14px;">${inner}</td>
+</tr></table>
+</td></tr>`;
+  const cardLabel = (color, text, extra) => `<div style="color:${color};font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;${extra || ""}">${text}</div>`;
   const nuevasBreakdown = ["inv", "cria", "fae"]
     .filter((k) => s.nuevas[k] && s.nuevas[k] !== "0")
     .map((k) => `${k.toUpperCase() === "CRIA" ? "CRÍA" : k.toUpperCase()} ${s.nuevas[k]}`)
     .join(" · ");
 
-  const cardsBlock = `<tr><td style="padding:24px 12px 0 12px;font-size:0;text-align:center;">
-${cardOpen("#EAF2FB")}
-<div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Sociedades operando</div>
+  // Arriba: Sociedades operando + Nuevas sociedades lado a lado (misma altura, celdas de una misma fila).
+  // Abajo: SACs ocupando el ancho de las dos. Mismo diseño en compu y en celular.
+  const cardsBlock = `<tr><td style="padding:24px 16px 0 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="width:50%;background-color:#EAF2FB;border-radius:10px;padding:12px;vertical-align:top;">
+${cardLabel("#1B4F8C", "Sociedades operando")}
 <table role="presentation" width="100%" style="margin-top:9px;"><tr>
 <td style="width:50%;vertical-align:top;">
 <div style="color:#6C8CAE;font-size:9px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Mes</div>
@@ -1447,17 +1453,26 @@ ${hasVar(s.sociedades.mesVar) ? `<div style="font-size:10px;color:${String(s.soc
 ${hasVar(s.sociedades.ytdVar) ? `<div style="font-size:10px;color:${String(s.sociedades.ytdVar).trim().startsWith("-") ? "#C0392B" : "#1E8449"};font-weight:bold;margin-top:1px;">${s.sociedades.ytdVar}</div><div style="font-size:10px;color:#9AA7B2;white-space:nowrap;">${vsYtdLabel}</div>` : ""}
 </td>
 </tr></table>
-${cardClose}${cardOpen("#EAF7EE")}
-<div style="color:#1E8449;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">Nuevas sociedades</div>
-<div style="color:#152C42;font-size:23px;font-weight:800;margin-top:2px;">${s.nuevas.cant || "0"} <span style="font-size:12px;font-weight:bold;color:#1E8449;">CCC ${s.nuevas.ccc || "--"}%</span></div>
+</td>
+<td style="width:10px;min-width:10px;font-size:0;line-height:0;"><div style="width:10px;">&nbsp;</div></td>
+<td style="width:50%;background-color:#EAF7EE;border-radius:10px;padding:12px;vertical-align:top;">
+${cardLabel("#1E8449", "Nuevas sociedades")}
+<div style="color:#152C42;font-size:23px;font-weight:800;margin-top:9px;">${s.nuevas.cant || "0"} <span style="font-size:12px;font-weight:bold;color:#1E8449;white-space:nowrap;">CCC ${s.nuevas.ccc || "--"}%</span></div>
 ${nuevasBreakdown ? `<div style="font-size:11px;color:#3D7A55;margin-top:6px;">${nuevasBreakdown}</div>` : ""}
-${cardClose}${s.sacsEnabled ? `${cardOpen("#FDF6E3")}
-<div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">SACS aprob.</div>
+</td>
+</tr></table>
+</td></tr>` +
+  (s.sacsEnabled ? card("#FDF6E3", `
+<table role="presentation" width="100%"><tr>
+<td style="width:50%;vertical-align:top;">
+${cardLabel("#B9770E", "SACS aprob.")}
 <div style="color:#152C42;font-size:20px;font-weight:800;margin-top:2px;">${s.sacs.apr || "0"}/${s.sacs.env || "0"} <span style="font-size:11px;color:#B9770E;font-weight:normal;">enviados</span></div>
-<div style="color:#B9770E;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;margin-top:9px;">JD otorgadas</div>
-<div style="color:#152C42;font-size:16px;font-weight:800;margin-top:2px;">${s.sacs.jdOtor || "--"} / ${s.sacs.jdSol || "--"} <span style="font-size:11px;color:#9C7A2E;font-weight:normal;">JD Solicitadas</span></div>
-${cardClose}` : ""}
-</td></tr>`;
+</td>
+<td style="width:50%;vertical-align:top;border-left:1px solid #F0DCA0;padding-left:10px;">
+${cardLabel("#B9770E", "JD otorgadas")}
+<div style="color:#152C42;font-size:20px;font-weight:800;margin-top:2px;">${s.sacs.jdOtor || "--"} / ${s.sacs.jdSol || "--"} <span style="font-size:11px;color:#9C7A2E;font-weight:normal;">JD Solicitadas</span></div>
+</td>
+</tr></table>`) : "");
 
   // ---- gestión de cuentas (CRM): solo si la casilla está tildada ----
   let crmBlock = "";
@@ -1490,7 +1505,7 @@ ${silItems.map((it) => {
 }).join("\n")}
 </table>
 </div>`;
-    crmBlock = `<tr><td style="padding:14px 16px 4px 16px;">
+    crmBlock = `<tr><td style="padding:10px 16px 0 16px;">
 <table role="presentation" width="100%"><tr>
 <td style="background-color:#F5F9FD;border:1px solid #D7E3F0;border-radius:10px;padding:14px;">
 <div style="color:#1B4F8C;font-size:10px;text-transform:uppercase;font-weight:bold;letter-spacing:.03em;">CRM</div>
