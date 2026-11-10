@@ -127,6 +127,9 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       { archivo: /bs as central/i, campo: "%CCC asociado #1", valor: (s) => (s.asociados[0] || {}).ccc, esperado: "79" },
       { archivo: /olmedo.*crm/i, campo: "JD Solicitadas (formato nuevo de SACs)", valor: (s) => s.sacs.jdSol, esperado: "8" },
       { archivo: /bunge.*oct/i, campo: "Nuevas sociedades (no el año de la leyenda)", valor: (s) => s.nuevas.cant, esperado: "1" },
+      { archivo: /bavio/i, campo: "Nombre (sin \"Power BI Desktop\")", valor: (s) => s.nombre, esperado: "Oficina Bavio" },
+      { archivo: /bavio/i, campo: "Tipo de cierre", valor: (s) => s.tipo, esperado: "oficina" },
+      { archivo: /maipu/i, campo: "Tipo de cierre", valor: (s) => s.tipo, esperado: "oficina" },
       { archivo: /olmedo.*crm/i, campo: "JD Otorgadas (\"JDs Otorgadas\")", valor: (s) => s.sacs.jdOtor, esperado: "7" },
     ];
     ESPERADOS.filter((e) => e.archivo.test(f)).forEach((e) => {

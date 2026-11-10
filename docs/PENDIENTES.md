@@ -31,6 +31,11 @@ Preguntas para Karli: ¿en qué hoja del PDF aparece (si es que sale de ahí)? �
 - Resuelto el 27/10/2026: el mail entra en ~340px. Queda: oficinas con tabla de asociados piden ~370px (en celulares chicos Gmail lo achica un poco).
   Para bajarlo habría que sacar el texto "vs Sep 25" de cada celda y ponerlo una sola vez como referencia arriba de la tabla (pendiente de OK de Karli).
 
+## 4d. Tablas de CRM cortadas en el PDF
+- Entre Ríos oct 26: la hoja de CRM dice 13 en silencio comercial pero "Detalle cuentas mes actual" muestra solo 9 filas (ninguna NUEVO) y
+  "históricas sin gestionar" 6 de 21: el PDF exporta solo las filas visibles de tablas con barra de desplazamiento. La webapp avisa en rojo.
+  Solución del lado del Power BI: agrandar esas tablas (o paginar) para que entren todas las filas al exportar.
+
 ## 5. Housekeeping
 - Reconciliar la plantilla del Proyecto de claude.ai (`diseno_entre_rios_junio2026_v6.html` en las instrucciones vs `diseno_entre_rios_julio2026_v7.html` en los documentos). Si la webapp es el camino oficial, actualizar el Proyecto con el orden de columnas vigente.
 - Guardar los 4 PDFs de referencia como fixtures locales (`tests/fixtures/`, no se suben al repo).

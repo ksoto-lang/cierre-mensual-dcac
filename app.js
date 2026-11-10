@@ -958,6 +958,9 @@ function firstLine(text) {
 }
 
 function autofillFromPages(pages) {
+  // PDFs exportados desde "Power BI Desktop" traen ese texto pegado al principio de cada hoja: se saca para que
+  // no termine en el nombre (caso Oficina Bavio/Maipú oct 26: "Power BI Desktop Oficina Bavio" y tipo asociado).
+  pages = pages.map((p) => ({ ...p, text: String(p.text || "").replace(/Power\s*BI\s*Desktop\s*/gi, "").trim() }));
   const filled = [];
   const missing = [];
   const setVal = (id, v) => { if (v !== undefined && v !== "" && v !== null) document.getElementById(id).value = v; };

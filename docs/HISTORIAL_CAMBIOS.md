@@ -70,6 +70,8 @@ y este archivo se actualiza en el mismo commit.
     con el cuadro de CRM. Mismo diseño en compu y celular (antes en el celu quedaban apiladas y más angostas que el CRM). Pedido de Karli: que no quede desparejo.
 34. Fix: **Nuevas sociedades = 2025** (Santiago Bunge oct 26, el PDF dice 1): con el %CCC vacío ("--", sin "%") fallaba el lector específico y el de
     respaldo tomaba el año de la leyenda del gráfico ("Nuevas Sociedades 2025"). Ahora se saca la leyenda antes de buscar y el "%" es opcional.
+35. Fix: PDFs exportados desde **"Power BI Desktop"** traen ese texto pegado en cada hoja; el nombre salía "Power BI Desktop Oficina Bavio" y el cierre se
+    detectaba como asociado (Bavio y Maipú oct 26). Ahora se saca ese texto antes de leer.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
