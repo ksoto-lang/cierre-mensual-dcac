@@ -68,6 +68,8 @@ y este archivo se actualiza en el mismo commit.
     Oficinas con tabla de asociados necesitan ~370px (la columna más angosta posible con "vs Sep 25"). Test con controles de ancho.
 33. Tarjetas de Sociedades/Nuevas/SACs: **Sociedades operando + Nuevas sociedades arriba (lado a lado, misma altura) y SACs abajo a lo ancho**, alineadas
     con el cuadro de CRM. Mismo diseño en compu y celular (antes en el celu quedaban apiladas y más angostas que el CRM). Pedido de Karli: que no quede desparejo.
+34. Fix: **Nuevas sociedades = 2025** (Santiago Bunge oct 26, el PDF dice 1): con el %CCC vacío ("--", sin "%") fallaba el lector específico y el de
+    respaldo tomaba el año de la leyenda del gráfico ("Nuevas Sociedades 2025"). Ahora se saca la leyenda antes de buscar y el "%" es opcional.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

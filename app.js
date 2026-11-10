@@ -761,11 +761,13 @@ function parseResumenDelMesTarget(text) {
 
 // "{Nombre} - Nuevas Sociedades Publicadoras" (sin sufijo Faena/Invernada)
 function parseNuevasSociedadesPage(text) {
-  const body = stripTitle(text, "Nuevas Sociedades Publicadoras");
+  // La leyenda del gráfico ("Nuevas Sociedades 2025 Nuevas Sociedades 2024") se saca antes de buscar: si no,
+  // el año se confunde con la cantidad (caso Santiago Bunge oct 26: puso 2025 en vez de 1).
+  const body = stripTitle(text, "Nuevas Sociedades Publicadoras").replace(/Nuevas\s+Sociedades\s+(?:19|20)\d{2}\b/g, " ");
   // patrón específico y más confiable: "Nuevas Sociedades 2 +0 → %CCC 17 % +9 p.p. ↗ Fae 1 Inv 1 Cria 1 MAG --"
-  // (evita confundirse con la leyenda del gráfico "Nuevas Sociedades 2025/2024")
+  // (el %CCC puede venir vacío y sin signo: "%CCC -- --")
   const specific = body.match(
-    /Nuevas Sociedades\s+(--|[\d.,]+)\s*((?:--|[+-][\d.,]+))?\s*(?:↗|↘|→)?\s*%CCC\s+(--|[\d.,]+)\s?%\s*((?:--|[+-][\d.,]+\s*p\.p\.))?\s*(?:↗|↘|→)?\s*Fae\s+(--|[\d.,]+)\s*Inv\s+(--|[\d.,]+)\s*Cria\s+(--|[\d.,]+)\s*MAG\s+(--|[\d.,]+)/
+    /Nuevas Sociedades\s+(--|[\d.,]+)\s*((?:--|[+-][\d.,]+))?\s*(?:↗|↘|→)?\s*%CCC\s+(--|[\d.,]+)\s?%?\s*((?:--|[+-][\d.,]+\s*p\.p\.))?\s*(?:↗|↘|→)?\s*Fae\s+(--|[\d.,]+)\s*Inv\s+(--|[\d.,]+)\s*Cria\s+(--|[\d.,]+)\s*MAG\s+(--|[\d.,]+)/
   );
   if (specific) {
     return {

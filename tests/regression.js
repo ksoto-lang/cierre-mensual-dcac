@@ -103,7 +103,12 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       const silMes = ((crmPage.text.split(/HIST[ÓO]RICO/i)[0].match(/Silencio\s+Comercial\s+(\d+)\s*\(/i)) || [])[1];
       const lineas = String(state.crm.silList || "").split("\n").filter((l) => l.trim()).length;
       if (lineas !== nuevosPdf) problems.push(`silencio comercial: el listado del PDF tiene ${nuevosPdf} en NUEVO y la webapp cargó ${lineas}`);
-      if (silMes !== undefined && +silMes !== nuevosPdf) problems.push(`silencio comercial: la hoja de CRM dice ${silMes} y el listado tiene ${nuevosPdf} (no coinciden en el PDF)`);
+      // si no coinciden en el propio PDF (tabla cortada en la exportación), no es error de la webapp: se avisa y
+      // se verifica que el formulario lo marque en rojo
+      if (silMes !== undefined && +silMes !== nuevosPdf) {
+        console.log(`        aviso: el PDF trae ${nuevosPdf} cuentas en NUEVO en el listado y la hoja de CRM dice ${silMes} (tabla cortada en el PDF)`);
+        if (!/No coincide/.test(w.document.getElementById("crmSilCheck").textContent)) problems.push("el listado no coincide con Silencio Comercial y el formulario no lo marca");
+      }
       const enMail = (html.match(/Sociedades en silencio comercial \((\d+)\)/) || [])[1];
       if (nuevosPdf && +enMail !== nuevosPdf) problems.push(`silencio comercial: el mail lista ${enMail || 0} y deberían ser ${nuevosPdf}`);
     } else if (/Sociedades en silencio comercial/.test(html)) {
@@ -121,6 +126,7 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       { archivo: /tandil/i, campo: "JD Solicitadas", valor: (s) => s.sacs.jdSol, esperado: "17" },
       { archivo: /bs as central/i, campo: "%CCC asociado #1", valor: (s) => (s.asociados[0] || {}).ccc, esperado: "79" },
       { archivo: /olmedo.*crm/i, campo: "JD Solicitadas (formato nuevo de SACs)", valor: (s) => s.sacs.jdSol, esperado: "8" },
+      { archivo: /bunge.*oct/i, campo: "Nuevas sociedades (no el año de la leyenda)", valor: (s) => s.nuevas.cant, esperado: "1" },
       { archivo: /olmedo.*crm/i, campo: "JD Otorgadas (\"JDs Otorgadas\")", valor: (s) => s.sacs.jdOtor, esperado: "7" },
     ];
     ESPERADOS.filter((e) => e.archivo.test(f)).forEach((e) => {
