@@ -34,7 +34,7 @@ Preguntas para Karli: ¿en qué hoja del PDF aparece (si es que sale de ahí)? �
 ## 4d. Tablas de CRM cortadas en el PDF
 - Entre Ríos oct 26: la hoja de CRM dice 13 en silencio comercial pero "Detalle cuentas mes actual" muestra solo 9 filas (ninguna NUEVO) y
   "históricas sin gestionar" 6 de 21: el PDF exporta solo las filas visibles de tablas con barra de desplazamiento. La webapp avisa en rojo.
-  Solución del lado del Power BI: agrandar esas tablas (o paginar) para que entren todas las filas al exportar.
+  Resuelto en la webapp (12/11/2026): botón para subir la tabla exportada del Power BI (.xlsx/.csv). Falta probarlo con un archivo real exportado.
 
 ## 5. Housekeeping
 - Reconciliar la plantilla del Proyecto de claude.ai (`diseno_entre_rios_junio2026_v6.html` en las instrucciones vs `diseno_entre_rios_julio2026_v7.html` en los documentos). Si la webapp es el camino oficial, actualizar el Proyecto con el orden de columnas vigente.

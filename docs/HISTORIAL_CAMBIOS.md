@@ -72,6 +72,10 @@ y este archivo se actualiza en el mismo commit.
     respaldo tomaba el año de la leyenda del gráfico ("Nuevas Sociedades 2025"). Ahora se saca la leyenda antes de buscar y el "%" es opcional.
 35. Fix: PDFs exportados desde **"Power BI Desktop"** traen ese texto pegado en cada hoja; el nombre salía "Power BI Desktop Oficina Bavio" y el cierre se
     detectaba como asociado (Bavio y Maipú oct 26). Ahora se saca ese texto antes de leer.
+36. **Listado completo de silencio comercial desde archivo** (opcional): cuando el PDF corta la tabla "Detalle cuentas mes actual", Karli la exporta
+    del Power BI (⋯ → Exportar datos, .xlsx o .csv) y la sube en el paso 5. Se toman las cuentas en NUEVO y reemplazan el listado; el control de
+    cantidad se vuelve a calcular. Columnas por nombre (no por orden). Excel con SheetJS 0.18.5 cargado solo al subir un .xlsx. Se descartó el link
+    a Google Sheets porque obliga a compartir la planilla con datos de clientes. Test con archivos de ejemplo inventados.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

@@ -1,5 +1,9 @@
 node_modules/
 # PDFs de prueba: tienen datos comerciales reales de clientes. NUNCA subirlos al repo (puede ser público).
 tests/fixtures/*.pdf
+# listados exportados del Power BI: también tienen datos de clientes
+tests/fixtures/*.xlsx
+tests/fixtures/*.xls
+tests/fixtures/*.csv
 tests/out/
 .DS_Store

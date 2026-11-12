@@ -157,6 +157,46 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
     problems.forEach((p) => { console.log("        PROBLEMA: " + p); });
     if (problems.length) fails++;
   }
+
+  // Regresión 10: listado de CRM subido como archivo exportado del Power BI (.csv y .xlsx).
+  // Datos INVENTADOS (no son clientes reales) para que el test pueda vivir en el repo.
+  {
+    const problems = [];
+    const w = makeWindow();
+    w.XLSX = require("xlsx");
+    const header = ["Razón Social", "CUIT Sociedad", "Nombre", "Apellido", "Fecha de asignación", "Fuente", "ESTADO", "Contacto", "AC asignado"];
+    const filas = [
+      ["Estancia Ejemplo SA", "30111111118", "Ana", "Prueba", "29/10/2026", "NR", "NUEVO", "", "ac@ejemplo.com"],
+      ["", "", "Beto", "Inventado", "18/10/2026", "NR", "NUEVO", "", "ac@ejemplo.com"],
+      ["Campo Ficticio SRL", "30222222229", "Carla", "Demo", "12/10/2026", "UA", "ABIERTO", "", "ac@ejemplo.com"],
+      ["Agro Muestra SA", "30333333330", "Dani", "Test", "05/10/2026", "NR", "NUEVO", "", "ac@ejemplo.com"],
+    ];
+    const revisar = (nombre, nuevos) => {
+      const lineas = w.document.getElementById("crm_silList").value.split("\n").filter(Boolean);
+      if (!nuevos || nuevos.length !== 3 || lineas.length !== 3) problems.push(`${nombre}: debería cargar 3 cuentas en NUEVO y cargó ${lineas.length}`);
+      if (!lineas.some((l) => /^Estancia Ejemplo SA — CUIT 30111111118 — asignada 29\/10\/2026$/.test(l))) problems.push(`${nombre}: no armó bien la línea con razón social, CUIT y fecha`);
+      if (!lineas.some((l) => /^Beto Inventado — asignada 18\/10\/2026$/.test(l))) problems.push(`${nombre}: sin razón social debería usar Nombre Apellido`);
+      if (lineas.some((l) => /Campo Ficticio/.test(l))) problems.push(`${nombre}: incluyó una cuenta que no está en NUEVO`);
+    };
+    // CSV con ";" y comillas (configuración regional en español)
+    const csv = "﻿" + [header, ...filas].map((r) => r.map((c) => `"${c}"`).join(";")).join("\r\n");
+    revisar("CSV", w.applyCrmListRows(w.csvToRows(csv)));
+    // Excel con una hoja extra adelante (filtros) y fechas/CUIT como valores de Excel
+    const XLSX = require("xlsx");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Filtros aplicados:"], ["Mes es octubre"]]), "Filtros");
+    const filasXlsx = filas.map((r) => r.map((c, i) => (i === 1 && c ? Number(c) : i === 4 ? new Date(+c.slice(6), +c.slice(3, 5) - 1, +c.slice(0, 2)) : c)));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...filasXlsx], { cellDates: true }), "Datos");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    revisar("Excel", w.applyCrmListRows(w.rowsFromXlsx(buf)));
+    // un archivo que no es la tabla de CRM no debe tocar el listado
+    w.document.getElementById("crm_silList").value = "no tocar";
+    if (w.applyCrmListRows([["Columna A", "Columna B"], ["1", "2"]]) !== null || w.document.getElementById("crm_silList").value !== "no tocar") problems.push("un archivo sin columnas de CRM cambió el listado");
+    console.log(`${problems.length ? "FAIL" : "ok  "}  listado de CRM desde archivo (.csv y .xlsx, datos de ejemplo)`);
+    problems.forEach((p) => console.log("        PROBLEMA: " + p));
+    if (problems.length) fails++;
+  }
+
   console.log(fails ? `\n${fails} caso(s) con problemas` : "\nTodo OK");
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

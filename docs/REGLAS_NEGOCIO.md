@@ -27,6 +27,7 @@
   **"Detalle cuentas mes actual"** del Power BI en estado **NUEVO** (no se usa "Detalle cuentas históricas sin gestionar"). Nombre = Razón Social
   (o Nombre Apellido si no hay razón social), link al Vademécum por CUIT y fecha de asignación. **La cantidad del listado siempre debe coincidir con
   el Silencio Comercial del mes**; si no coincide, la webapp avisa en el formulario para que Karli lo revise (no se completa ni se corrige solo).
+  Si el PDF cortó la tabla, se puede subir (opcional) la tabla exportada del Power BI (.xlsx/.csv): reemplaza el listado con todas las cuentas en NUEVO.
 
 ## 3. Contenido
 - Comentarios de Karli literales. Si "Pendientes" es el contenido, poner esa palabra tal cual.

@@ -34,6 +34,7 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("crmFields").style.display = e.target.checked ? "block" : "none";
   });
   ["crm_sil", "crm_silList"].forEach((id) => document.getElementById(id).addEventListener("input", updateCrmSilCheck));
+  document.getElementById("crmListFile").addEventListener("change", (e) => { loadCrmListFile(e.target.files[0]); e.target.value = ""; });
   document.getElementById("btnAddAsociado").addEventListener("click", () => renderAsociadoRow());
   document.getElementById("btnAddRecuadro").addEventListener("click", () => addRecuadroCard());
   document.getElementById("btnAddCisRecuadro").addEventListener("click", () => {
@@ -904,9 +905,148 @@ function updateCrmSilCheck() {
     el.className = "status-box status-ok";
     el.style.display = "block";
   } else {
-    el.textContent = `⚠ No coincide: la hoja de CRM dice ${esperado} en silencio comercial y el listado tiene ${listado}. Revisalo antes de mandar el mail.`;
+    el.textContent = `⚠ No coincide: la hoja de CRM dice ${esperado} en silencio comercial y el listado tiene ${listado}. Si el PDF cortó la tabla, subí el listado exportado del Power BI (abajo). Revisalo antes de mandar el mail.`;
     el.className = "status-box status-err";
     el.style.display = "block";
+  }
+}
+
+// ---- Listado completo de CRM desde un archivo exportado del Power BI -----------------------------
+// El PDF solo trae las filas visibles de la tabla "Detalle cuentas mes actual" (si tiene barra de
+// desplazamiento, la corta). Karli exporta esa tabla desde el Power BI (⋯ → Exportar datos, .xlsx o .csv)
+// y la sube acá: se toman las cuentas en estado NUEVO. El archivo se lee en el navegador, no sale de la compu.
+const normHeader = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+function crmCellText(v) {
+  if (v === null || v === undefined) return "";
+  if (Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v)) {
+    // Excel a veces guarda la fecha unos segundos antes de la medianoche: en ese caso es el día siguiente
+    const casiMedianoche = v.getHours() === 23 && v.getMinutes() === 59;
+    const d = casiMedianoche ? new Date(v.getTime() + 60 * 1000) : v;
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+  if (typeof v === "number") return Number.isInteger(v) ? String(v) : String(v);
+  return String(v).trim();
+}
+function crmFecha(v) {
+  const s = crmCellText(v);
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); // 2026-10-29 (con o sin hora)
+  if (m) return `${m[3].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[1]}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // 29/10/2026 (con o sin hora)
+  if (m) return `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`;
+  return s;
+}
+// rows = filas de la tabla (arrays de celdas). Busca la fila de títulos por nombre de columna, así no
+// depende del orden. Devuelve [{razon, cuit, persona, fecha, fuente, estado}] o null si no reconoce la tabla.
+function parseCrmRows(rows) {
+  const hIdx = (rows || []).findIndex((r) => {
+    const h = (r || []).map(normHeader);
+    return h.some((c) => c.includes("estado")) && h.some((c) => c.includes("razon") || c.includes("cuit"));
+  });
+  if (hIdx < 0) return null;
+  const h = rows[hIdx].map(normHeader);
+  const col = (test) => h.findIndex(test);
+  const ci = {
+    razon: col((c) => c.includes("razon")),
+    cuit: col((c) => c.includes("cuit")),
+    nombre: col((c) => c === "nombre" || c.startsWith("nombre")),
+    apellido: col((c) => c.startsWith("apellido")),
+    fecha: col((c) => c.includes("fecha")),
+    fuente: col((c) => c.includes("fuente")),
+    estado: col((c) => c.includes("estado")),
+  };
+  const get = (r, k) => (ci[k] >= 0 ? crmCellText(r[ci[k]]) : "");
+  return rows.slice(hIdx + 1).map((r) => {
+    if (!r || !r.some((c) => crmCellText(c))) return null;
+    const cuitDigits = get(r, "cuit").replace(/\D/g, "");
+    return {
+      razon: get(r, "razon"),
+      cuit: cuitDigits.length === 11 ? cuitDigits : "",
+      persona: [get(r, "nombre"), get(r, "apellido")].filter(Boolean).join(" "),
+      fecha: ci.fecha >= 0 ? crmFecha(r[ci.fecha]) : "",
+      fuente: get(r, "fuente"),
+      estado: get(r, "estado").toUpperCase(),
+    };
+  }).filter((r) => r && (r.razon || r.persona) && r.estado && !/^total/i.test(r.razon));
+}
+// CSV del Power BI: separador "," (o ";" según la configuración regional), comillas dobles, BOM opcional.
+function csvToRows(text) {
+  const t = String(text || "").replace(/^﻿/, "");
+  const first = t.split(/\r?\n/)[0] || "";
+  const sep = [";", "\t", ","].map((s) => [s, first.split(s).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = [];
+  let row = [], cell = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) {
+      if (ch === '"' && t[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') q = false;
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === sep) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && t[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+// Excel (.xlsx/.xls): se usa SheetJS, que se carga solo cuando hace falta (no en cada visita a la página).
+function ensureXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    sc.onload = () => (window.XLSX ? resolve(window.XLSX) : reject(new Error("no cargó la librería de Excel")));
+    sc.onerror = () => reject(new Error("no pude cargar la librería de Excel (¿sin internet?)"));
+    document.head.appendChild(sc);
+  });
+}
+function rowsFromXlsx(arrayBuffer) {
+  const wb = window.XLSX.read(new Uint8Array(arrayBuffer), { type: "array", cellDates: true });
+  // la hoja que tenga la tabla (el PBI a veces agrega otra hoja con los filtros aplicados)
+  for (const name of wb.SheetNames) {
+    const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: "" });
+    if (parseCrmRows(rows)) return rows;
+  }
+  return [];
+}
+// Carga las cuentas en NUEVO al listado del formulario y muestra qué se leyó.
+function applyCrmListRows(rows) {
+  const status = document.getElementById("crmFileStatus");
+  const all = parseCrmRows(rows);
+  if (!all) {
+    status.textContent = "No reconozco la tabla: tiene que tener al menos las columnas Razón Social (o CUIT) y ESTADO.";
+    status.className = "status-box status-err";
+    status.style.display = "block";
+    return null;
+  }
+  const nuevos = all.filter((r) => r.estado === "NUEVO");
+  document.getElementById("crm_silList").value = nuevos.map(crmSilLine).join("\n");
+  status.textContent = `Leído del archivo: ${all.length} cuenta(s), ${nuevos.length} en estado NUEVO (son las que se listan).`;
+  status.className = "status-box status-ok";
+  status.style.display = "block";
+  updateCrmSilCheck();
+  return nuevos;
+}
+function loadCrmListFile(file) {
+  if (!file) return;
+  const status = document.getElementById("crmFileStatus");
+  const fail = (msg) => { status.textContent = `No pude leer el archivo: ${msg}`; status.className = "status-box status-err"; status.style.display = "block"; };
+  const reader = new FileReader();
+  if (/\.(csv|txt)$/i.test(file.name)) {
+    reader.onload = () => applyCrmListRows(csvToRows(reader.result));
+    reader.onerror = () => fail("error al abrirlo");
+    reader.readAsText(file, "utf-8");
+  } else if (/\.xlsx?$/i.test(file.name)) {
+    reader.onload = () => ensureXlsxLib()
+      .then(() => applyCrmListRows(rowsFromXlsx(reader.result)))
+      .catch((e) => fail(e.message));
+    reader.onerror = () => fail("error al abrirlo");
+    reader.readAsArrayBuffer(file);
+  } else {
+    fail("tiene que ser .xlsx o .csv (exportado desde el Power BI).");
   }
 }
 
@@ -1041,6 +1181,7 @@ function autofillFromPages(pages) {
 
   // ---- Gestión de cuentas (CRM): la tarjeta se activa solo si el PDF trae esa hoja ----
   ["crm_auto", "crm_env", "crm_sil", "crm_autoH", "crm_envH", "crm_silH", "crm_silList"].forEach((id) => { document.getElementById(id).value = ""; });
+  document.getElementById("crmFileStatus").style.display = "none";
   document.getElementById("crmEnabled").checked = !!crm;
   document.getElementById("crmFields").style.display = crm ? "block" : "none";
   if (crm) {
@@ -1053,12 +1194,12 @@ function autofillFromPages(pages) {
       setVal("crm_silList", enSilencio.map(crmSilLine).join("\n"));
       const esperado = crmSilCount(crm.sil);
       if (esperado !== null && esperado !== enSilencio.length) {
-        missing.push(`Silencio comercial: la hoja de CRM dice ${esperado} pero el listado "Detalle cuentas mes actual" tiene ${enSilencio.length} — revisalo`);
+        missing.push(`Silencio comercial: la hoja de CRM dice ${esperado} pero el listado "Detalle cuentas mes actual" del PDF tiene ${enSilencio.length} — subí el listado exportado del Power BI en el paso 5`);
       } else if (enSilencio.length) {
         filled.push(`sociedades en silencio comercial (${enSilencio.length})`);
       }
     } else if (crmSilCount(crm.sil)) {
-      missing.push(`Silencio comercial: el PDF no trae el listado "Detalle cuentas mes actual" para nombrar las ${crmSilCount(crm.sil)} sociedades`);
+      missing.push(`Silencio comercial: el PDF no trae el listado "Detalle cuentas mes actual" para nombrar las ${crmSilCount(crm.sil)} sociedades — subí el listado exportado del Power BI en el paso 5`);
     }
   }
   updateCrmSilCheck();

@@ -232,6 +232,10 @@
           <textarea id="crm_silList" rows="4" placeholder="Una por línea. Ej: Grand Family SA — CUIT 30707711562 — asignada 29/09/2026"></textarea>
           <div class="hint">Se completa sola con las cuentas en estado NUEVO del listado "Detalle cuentas mes actual". Si una línea tiene CUIT, en el mail queda linkeada al Vademécum. Vacío = no se muestra el listado.</div>
           <div id="crmSilCheck" class="status-box" style="display:none;"></div>
+          <label style="margin-top:14px;">Listado completo (si el PDF lo cortó)</label>
+          <input type="file" id="crmListFile" accept=".xlsx,.xls,.csv">
+          <div class="hint">En el Power BI: tabla "Detalle cuentas mes actual" → ⋯ → Exportar datos (Excel o CSV) y subí ese archivo acá. Reemplaza el listado de arriba con todas las cuentas en NUEVO. El archivo se lee en tu compu, no se sube a ningún lado. Si después volvés a leer el PDF, subilo de nuevo.</div>
+          <div id="crmFileStatus" class="status-box" style="display:none;"></div>
         </div>
       </div>
     </details>

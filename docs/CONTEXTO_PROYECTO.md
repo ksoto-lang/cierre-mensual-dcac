@@ -17,7 +17,7 @@ mismo trabajo (Claude arma el HTML a partir del PDF siguiendo una plantilla `dis
 ## 2. Arquitectura
 - 4 archivos en la raíz: `index.html` (UI), `app.js` (toda la lógica), `styles.css` (estilos de la webapp, NO del mail), `assets.js`
   (`window.DCAC_ASSETS` con logo y foto de header en base64 — no editar a mano).
-- Única dependencia externa: `pdf.js` desde cdnjs, para leer el PDF en el navegador.
+- Dependencias externas (cdnjs): `pdf.js` para leer el PDF, y SheetJS (`xlsx` 0.18.5) que se carga solo al subir un Excel del listado de CRM.
 - Persistencia solo en `localStorage` (por navegador/PC, no se comparte): `dcac_cierre_drafts_v1` (borradores),
   `dcac_cierre_autosave_v1` (autoguardado), `dcac_cuit_directory_v1` (directorio sociedad→CUIT), `dcac_default_header_image_v1` (imagen de header "de siempre").
 - Funciones clave de `app.js`: `autofillFromPages(pages)` (orquesta los parsers según el título de cada página), `readState()` / `restoreState()`
