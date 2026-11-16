@@ -76,6 +76,11 @@ y este archivo se actualiza en el mismo commit.
     del Power BI (⋯ → Exportar datos, .xlsx o .csv) y la sube en el paso 5. Se toman las cuentas en NUEVO y reemplazan el listado; el control de
     cantidad se vuelve a calcular. Columnas por nombre (no por orden). Excel con SheetJS 0.18.5 cargado solo al subir un .xlsx. Se descartó el link
     a Google Sheets porque obliga a compartir la planilla con datos de clientes. Test con archivos de ejemplo inventados.
+37. Fix: **PDFs con formato numérico en inglés** (Oficina Río 4to oct 26: "11,595", "2.7 %", fechas 10/30/2026). La webapp los leía como formato
+    argentino: números con coma en el mail, fila Total con "19.855999999999998", barras vacías, fila TOTAL de asociados mal (ofrecidas 1.623 en vez
+    de 9.392, %CCC 671 %), fechas del listado de CRM al revés. Ahora detecta el formato y pasa números y fechas a formato argentino antes de leer.
+    También: totales de Vendidas/Compradas de "Actividad por unidad" con separador de miles, y el listado de CRM ya no pierde la fila cuyo mail
+    viene cortado en el PDF.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.

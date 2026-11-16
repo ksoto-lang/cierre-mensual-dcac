@@ -29,6 +29,9 @@
   el Silencio Comercial del mes**; si no coincide, la webapp avisa en el formulario para que Karli lo revise (no se completa ni se corrige solo).
   Si el PDF cortó la tabla, se puede subir (opcional) la tabla exportada del Power BI (.xlsx/.csv): reemplaza el listado con todas las cuentas en NUEVO.
 
+- **Formato de números del PDF**: si el Power BI exporta en inglés (miles con coma, decimales con punto, fechas mes/día/año), la webapp lo detecta y
+  lo pasa a formato argentino antes de leer. El mail siempre muestra formato argentino ("11.595", "2,7 %", "30/10/2026").
+
 ## 3. Contenido
 - Comentarios de Karli literales. Si "Pendientes" es el contenido, poner esa palabra tal cual.
 - Marcar inconsistencias del PDF en vez de resolverlas en silencio; confirmar con Karli ante datos ambiguos.

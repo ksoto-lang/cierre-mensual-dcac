@@ -12,6 +12,7 @@ tienen datos comerciales reales. Archivos esperados (cualquier nombre, terminand
 | Oficina Tandil (sep 2026)         | Hoja de CRM (Gestión de cuentas), SACs, Resultado Comercial vacío |
 | Oficina Bs As Central (sep 2026)  | Formato nuevo de Resultado Comercial (%CCC "0,79", YTD), sin CRM |
 | Franco Barrionuevo (jun 2026)     | Representante, sin SACs ni CRM                               |
+| Oficina Río 4to (oct 2026)        | PDF en formato numérico inglés ("11,595", "2.7 %", fechas mes/día/año), 6 asociados, CRM con mail cortado |
 | Santiago Bunge (oct 2026)         | Nuevas sociedades con %CCC vacío ("--") — no confundir con el año de la leyenda |
 | Oficina Bavio / Oficina Maipú (oct 2026) | Exportados desde "Power BI Desktop" (texto pegado en cada hoja), sin Resultado Comercial |
 | Oficina Entre Ríos (oct 2026)     | Tablas de CRM cortadas en el PDF (silencio 13, listado 0) — el formulario avisa |

@@ -852,7 +852,8 @@ function parseCrmDetalleMesActual(text) {
   const hdr = seg.match(/AC\s+asignado/i);
   if (hdr) seg = seg.slice(hdr.index + hdr[0].length);
   const rows = [];
-  const rowRe = /([\s\S]*?)\s*[^\s@]+@[^\s@]+\.[A-Za-z.]+/g;
+  // la fila termina en el mail del AC; el PDF a veces lo corta ("adeambrocio@decampoacampo."), por eso alcanza con "algo@algo"
+  const rowRe = /([\s\S]*?)\s*[^\s@]+@[^\s@]+/g;
   const fila = new RegExp("^(.*?)\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{4})\\s+(.+?)\\s+(" + CRM_ESTADOS + ")\\s*$", "i");
   let m;
   while ((m = rowRe.exec(seg)) !== null) {
@@ -1097,10 +1098,40 @@ function firstLine(text) {
   return text.trim().split(/\s{2,}|(?<=\n)/)[0] || text.slice(0, 60);
 }
 
+// ---- PDFs exportados con formato numérico en inglés ----------------------------------------------
+// Algunos PDFs salen de un Power BI configurado en inglés: miles con coma ("11,595"), decimales con punto
+// ("2.7 %") y fechas mes/día/año ("10/30/2026"). Toda la webapp lee formato argentino ("11.595", "2,7 %",
+// "30/10/2026"), así que si el PDF viene en inglés se lo pasa a formato argentino antes de leerlo.
+// Caso Oficina Río 4to oct 26: totales absurdos (19.855999), barras vacías, fila TOTAL de asociados mal.
+// Ojo: en esos PDFs las variaciones en p.p. siguen en formato argentino ("-0,1 p.p."): no se tocan.
+function isEnglishNumberFormat(pages) {
+  const t = pages.map((p) => p.text).join(" ");
+  const count = (re) => (t.match(re) || []).length;
+  const ingles = count(/\d\.\d{1,2}\s?%/g) + count(/\b\d{1,3},\d{3}\b(?![,.]\d)/g);
+  const argentino = count(/\d,\d{1,2}\s?%/g) + count(/\b\d{1,3}\.\d{3}\b(?![,.]\d)/g);
+  return ingles > argentino;
+}
+function englishToArgentineText(text) {
+  return String(text)
+    // fechas mes/día/año -> día/mes/año con dos dígitos
+    .replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, (m, mes, dia, anio) => `${dia.padStart(2, "0")}/${mes.padStart(2, "0")}/${anio}`)
+    // números: "11,595" -> "11.595" · "1,234.5" -> "1.234,5" · "2.7" -> "2,7"
+    .replace(/\d[\d,.]*\d|\d/g, (tok) => {
+      if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(tok)) {
+        const [ent, dec] = tok.split(".");
+        return ent.replace(/,/g, ".") + (dec ? "," + dec : "");
+      }
+      if (/^\d+\.\d+$/.test(tok)) return tok.replace(".", ",");
+      return tok;
+    });
+}
+
 function autofillFromPages(pages) {
   // PDFs exportados desde "Power BI Desktop" traen ese texto pegado al principio de cada hoja: se saca para que
   // no termine en el nombre (caso Oficina Bavio/Maipú oct 26: "Power BI Desktop Oficina Bavio" y tipo asociado).
   pages = pages.map((p) => ({ ...p, text: String(p.text || "").replace(/Power\s*BI\s*Desktop\s*/gi, "").trim() }));
+  const formatoIngles = isEnglishNumberFormat(pages);
+  if (formatoIngles) pages = pages.map((p) => ({ ...p, text: englishToArgentineText(p.text) }));
   const filled = [];
   const missing = [];
   const setVal = (id, v) => { if (v !== undefined && v !== "" && v !== null) document.getElementById(id).value = v; };
@@ -1563,8 +1594,8 @@ function buildEmailHtml(s) {
     `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:800;background-color:#152C42;color:#fff;">${s.hero.operadas || totalOperadas}</td>` +
     `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.ofrecidas || totalOfrecidas}</td>` +
     `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#9FD9B8;">${s.hero.ccc || "--"}%</td>` +
-    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${totalVendidas}</td>` +
-    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${totalCompradas}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${Math.round(totalVendidas).toLocaleString("es-AR")}</td>` +
+    `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${Math.round(totalCompradas).toLocaleString("es-AR")}</td>` +
     `<td align="center" style="padding:12px 2px;font-size:13px;font-weight:bold;background-color:#152C42;color:#fff;">${s.hero.rendim || "--"}%</td></tr>`;
 
   // ---- cards: sociedades / nuevas / sacs ----

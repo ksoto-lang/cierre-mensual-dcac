@@ -127,6 +127,12 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
       { archivo: /bs as central/i, campo: "%CCC asociado #1", valor: (s) => (s.asociados[0] || {}).ccc, esperado: "79" },
       { archivo: /olmedo.*crm/i, campo: "JD Solicitadas (formato nuevo de SACs)", valor: (s) => s.sacs.jdSol, esperado: "8" },
       { archivo: /bunge.*oct/i, campo: "Nuevas sociedades (no el año de la leyenda)", valor: (s) => s.nuevas.cant, esperado: "1" },
+      // PDF con formato numérico en inglés ("11,595", "2.7 %", fechas mes/día/año)
+      { archivo: /rio 4to/i, campo: "Cabezas operadas (formato inglés)", valor: (s) => s.hero.operadas, esperado: "11.595" },
+      { archivo: /rio 4to/i, campo: "Rendimiento (formato inglés)", valor: (s) => s.hero.rendim, esperado: "2,7" },
+      { archivo: /rio 4to/i, campo: "Ofrecidas del asociado #2 (formato inglés)", valor: (s) => (s.asociados[1] || {}).ofrecidas, esperado: "1.327" },
+      { archivo: /rio 4to/i, campo: "Fecha del listado de CRM (mes/día/año -> día/mes/año)", valor: (s) => (s.crm.silList.split("\n")[0].match(/asignada (\S+)/) || [])[1], esperado: "30/10/2026" },
+      { archivo: /rio 4to/i, campo: "Cuentas en NUEVO del listado (incluye la fila con el mail cortado)", valor: (s) => String(s.crm.silList.split("\n").filter(Boolean).length), esperado: "7" },
       { archivo: /bavio/i, campo: "Nombre (sin \"Power BI Desktop\")", valor: (s) => s.nombre, esperado: "Oficina Bavio" },
       { archivo: /bavio/i, campo: "Tipo de cierre", valor: (s) => s.tipo, esperado: "oficina" },
       { archivo: /maipu/i, campo: "Tipo de cierre", valor: (s) => s.tipo, esperado: "oficina" },
@@ -139,6 +145,11 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
 
     // Regresión 8: variación vacía en las tablas -> no se muestra "—" con "vs Sep 25" / "vs target"
     if (/—<\/span><div style="color:#9AA7B2;[^"]*">vs /.test(html)) problems.push('aparece "— vs ..." en una tabla: si la variación está vacía no debe mostrarse nada');
+
+    // Regresión 11: números del mail siempre en formato argentino (sin "11,595", sin decimales largos tipo 19.855999)
+    const textoMail = html.replace(/<[^>]+>/g, " ");
+    if (/\b\d{1,3},\d{3}\b/.test(textoMail)) problems.push(`el mail tiene números en formato inglés: "${textoMail.match(/\b\d{1,3},\d{3}\b/)[0]}"`);
+    if (/\d[.,]\d{6,}/.test(textoMail)) problems.push(`el mail tiene un número con decimales de más: "${textoMail.match(/\d+[.,]\d{6,}/)[0]}"`);
 
     // Regresión 9: reglas de ancho para que el mail entre en el celular sin que Gmail lo achique (y corte la foto):
     // márgenes laterales chicos, tarjetas fluidas (inline-block), tablas de 7 columnas con celdas angostas
