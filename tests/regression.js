@@ -150,6 +150,7 @@ const balanced = (h) => ["table", "tr", "td"].map((t) => {
     const textoMail = html.replace(/<[^>]+>/g, " ");
     if (/\b\d{1,3},\d{3}\b/.test(textoMail)) problems.push(`el mail tiene números en formato inglés: "${textoMail.match(/\b\d{1,3},\d{3}\b/)[0]}"`);
     if (/\d[.,]\d{6,}/.test(textoMail)) problems.push(`el mail tiene un número con decimales de más: "${textoMail.match(/\d+[.,]\d{6,}/)[0]}"`);
+    if (/Agro Mauro/.test(textoMail)) problems.push("el mail trae el texto de ejemplo \"Agro Mauro SRL\"");
 
     // Regresión 9: reglas de ancho para que el mail entre en el celular sin que Gmail lo achique (y corte la foto):
     // márgenes laterales chicos, tarjetas fluidas (inline-block), tablas de 7 columnas con celdas angostas

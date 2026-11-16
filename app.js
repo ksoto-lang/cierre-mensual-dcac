@@ -300,7 +300,7 @@ const RECUADRO_COLORS = {
 
 const DEFAULT_RECUADROS = [
   { titulo: "Producción", icono: "📋", color: "teal", link: "", linkTexto: "",
-    contenido: "SACs pendientes:\n- Agro Mauro SRL" },
+    contenido: "SACs pendientes:\n- " },
   { titulo: "Novedades del mes", icono: "📊", color: "amber", link: "", linkTexto: "",
     contenido: "Mermas:\n- \nVariación de ofrecimientos:\n- \nNo concretadas de faena:\n- \nNo concretadas de invernada:\n- " },
   { titulo: "Resumen del mes", icono: "★", color: "dark", link: "", linkTexto: "",

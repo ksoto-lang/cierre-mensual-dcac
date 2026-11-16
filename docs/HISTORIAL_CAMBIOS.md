@@ -81,6 +81,8 @@ y este archivo se actualiza en el mismo commit.
     de 9.392, %CCC 671 %), fechas del listado de CRM al revés. Ahora detecta el formato y pasa números y fechas a formato argentino antes de leer.
     También: totales de Vendidas/Compradas de "Actividad por unidad" con separador de miles, y el listado de CRM ya no pierde la fila cuyo mail
     viene cortado en el PDF.
+38. El recuadro "Producción" que viene por defecto traía "SACs pendientes: - Agro Mauro SRL" (texto de ejemplo) y se colaba en mails reales
+    (ej. Río 4to oct 26). Ahora viene vacío ("- "), como los demás recuadros de ejemplo. El test controla que no aparezca.
 
 ## Análisis sin cambio de código
 - Sobre el %CCC (05/10): la definición real es Vendidas/(Vendidas+No Concretadas), no Operadas/Ofrecidas (ver REGLAS_NEGOCIO §4). No se pudo calcular el %CCC propio de Alan García sin "Cabezas No Concretadas" por comercial.
